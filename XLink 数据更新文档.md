@@ -1,7 +1,7 @@
-### XLink 数据更新文档
+## XLink 数据更新文档
 XLink 数据更新流程详细说明文档，需要了解每个数据文件的格式，可参照[XLink 数据文件汇总](https://github.com/XinruZhang/XLink/blob/master/XLink%20数据文件汇总.md)。
 
-#### 0. 准备标准输入数据
+### 0. 准备标准输入数据
 XLink 数据生成是一个流程化的过程，有了标准输入数据之后，可一次性生成所有基础文件。
 
 标准输入数据是经过处理过的百度百科和维基百科数据，具体的数据格式为：
@@ -17,7 +17,7 @@ XLink 数据生成是一个流程化的过程，有了标准输入数据之后�
 
 *这一版本(2018.8)预处理代码在(18服务器)`/home/xlore/xlink/DataPrepare`项目中，运行命令 `ant StandardizeV1` 可生成标准输入数据。*
 
-#### 1. Generator.py 生成基础数据
+### 1. Generator.py 生成基础数据
 项目路径(18服务器)：/home/xlore/xlink/DataPrepare/
 
 **I. 生成基础数据**
@@ -42,7 +42,7 @@ a. entity_prior 移到 /home/zj/EntityLinkingWeb/data/baidu/prob/baidu_entity_pr
 b. m_given_e 移到 /home/zj/EntityLinkingWeb/data/baidu/prob/prob_mention_entity.dat
 c. link_prob 移到 /home/zj/EntityLinkingWeb/data/baidu/prob/link_prob.dat
 
-#### 2. 词向量与实体向量
+### 2. 词向量与实体向量
 项目路径(68服务器)：/home/zj/EntityLinkingPreprocess/TrainJointModel
 
 **I. 将基础数据的 train_kg, train_text 移到向量训练项目中** 
@@ -61,7 +61,7 @@ c. link_prob 移到 /home/zj/EntityLinkingWeb/data/baidu/prob/link_prob.dat
 ps: 注意备份
 
 
-#### 3. AC 自动机的 Trie Tree
+### 3. AC 自动机的 Trie Tree
 **I. 生成初始语料：mention_anchor 表**
 与词向量的训练语料一样，本步骤可以与其他文件一起生成（Generator.py）。
 程序路径(18服务器): /home/xlore/xlink/DataPrepare/Generator.py
