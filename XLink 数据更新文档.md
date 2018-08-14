@@ -20,59 +20,60 @@ XLink 数据生成是一个流程化的过程，有了标准输入数据之后�
 ### 1. Generator.py 生成基础数据
 项目路径(18服务器)：/home/xlore/xlink/DataPrepare/
 
-**I. 生成基础数据**
+#### I. 生成基础数据
 运行 Generator.py
 *在里面可以配置输入输出文件夹和文件名，处理的语料库(baidu/wiki)*等
 
 可生成如下文件：
-output_dir/baidu/entity_prior
-output_dir/baidu/link_prob
-output_dir/baidu/m_given_e
-output_dir/baidu/mention_anchor
-output_dir/baidu/train_kg
-output_dir/baidu/train_text
+
+- output_dir/baidu/entity_prior
+- output_dir/baidu/link_prob
+- output_dir/baidu/m_given_e
+- output_dir/baidu/mention_anchor
+- output_dir/baidu/train_kg
+- output_dir/baidu/train_text
 
 > ps: 上述是百度百科生成的数据文件，将路径中的 baidu 换为 wiki，即为维基百科的生成数据。
 pss: 本版本(2018.8)的 output_dir 是 data/production
 
 前三个文件可直接用于 XLink，后三个文件需要进行进一步处理。其中，train_kg, train_text 用于训练词向量和实体向量，mention_anchor 用于生成 AC Trie Tree.
 
-**II. 将 entity_prior, link_prob, m_given_e 移到XLink的项目路径**
-a. entity_prior 移到 /home/zj/EntityLinkingWeb/data/baidu/prob/baidu_entity_prior.dat
-b. m_given_e 移到 /home/zj/EntityLinkingWeb/data/baidu/prob/prob_mention_entity.dat
-c. link_prob 移到 /home/zj/EntityLinkingWeb/data/baidu/prob/link_prob.dat
+#### II. 将 entity_prior, link_prob, m_given_e 移到XLink的项目路径
+- entity_prior 移到 /home/zj/EntityLinkingWeb/data/baidu/prob/baidu_entity_prior.dat
+- m_given_e 移到 /home/zj/EntityLinkingWeb/data/baidu/prob/prob_mention_entity.dat
+- link_prob 移到 /home/zj/EntityLinkingWeb/data/baidu/prob/link_prob.dat
 
 ### 2. 词向量与实体向量
 项目路径(68服务器)：/home/zj/EntityLinkingPreprocess/TrainJointModel
 
-**I. 将基础数据的 train_kg, train_text 移到向量训练项目中** 
+#### I. 将基础数据的 train_kg, train_text 移到向量训练项目中
 路径可根据下面一步中的程序（`demo-align.sh`）进行配置
 
-**II. 通过训练语料训练向量表示 **
+#### II. 通过训练语料训练向量表示
 配置并运行程序：./src/demo-align.sh 
-*通过修改 `demo-align.sh`中的参数来配置训练语料的文件路径*
+> 通过修改 `demo-align.sh`中的参数来配置训练语料的文件路径
 
-**III. 将生成的向量复制到项目中的使用位置(68服务器) **
-/home/zj/EntityLinkingWeb/data/baidu/vec_model/vectors_word
-/home/zj/EntityLinkingWeb/data/baidu/vec_model/vectors_entity
-/home/zj/EntityLinkingWeb/data/wiki/vec_model/vectors_word
-/home/zj/EntityLinkingWeb/data/wiki/vec_model/vectors_entity
+#### III. 将生成的向量复制到项目中的使用位置(68服务器) 
+- /home/zj/EntityLinkingWeb/data/baidu/vec_model/vectors_word
+- /home/zj/EntityLinkingWeb/data/baidu/vec_model/vectors_entity
+- /home/zj/EntityLinkingWeb/data/wiki/vec_model/vectors_word
+- /home/zj/EntityLinkingWeb/data/wiki/vec_model/vectors_entity
 
 ps: 注意备份
 
 
 ### 3. AC 自动机的 Trie Tree
-**I. 生成初始语料：mention_anchor 表**
+#### I. 生成初始语料：mention_anchor 表
 与词向量的训练语料一样，本步骤可以与其他文件一起生成（Generator.py）。
 程序路径(18服务器): /home/xlore/xlink/DataPrepare/Generator.py
 
-**II. 通过 mention_anchor 表生成 AC Trie Tree**
-a. 打开项目路径(68服务器): /home/zj/EntityLinkingPreprocess/BuildIndex
-b. 编辑文件 ./src/main/BuildBaiudAll.java，配置相关参数
-c. 运行 `ant` 编译后，再运行 `ant BuildBaiudAll` 生成 Trie Tree
+#### II. 通过 mention_anchor 表生成 AC Trie Tree
+1. 打开项目路径(68服务器): /home/zj/EntityLinkingPreprocess/BuildIndex
+2. 编辑文件 ./src/main/BuildBaiudAll.java，配置相关参数
+3. 运行 `ant` 编译后，再运行 `ant BuildBaiudAll` 生成 Trie Tree
 
-**III. 将生成好的 .trie 文件保存到 XLink 项目的使用位置(68服务器)**
-/home/zj/EntityLinkingWeb/data/baidu/trie/baidu.trie
-/home/zj/EntityLinkingWeb/data/wiki/trie/wiki.trie
-/home/zj/EntityLinkingWeb/data/baidu/trie/baidu_word.trie（不知道怎么生成，好像也没用到）
-/home/zj/EntityLinkingWeb/data/wiki/trie/wiki_word.trie（不知道怎么生成，好像也没用到）
+#### III. 将生成好的 .trie 文件保存到 XLink 项目的使用位置(68服务器)
+- /home/zj/EntityLinkingWeb/data/baidu/trie/baidu.trie
+- /home/zj/EntityLinkingWeb/data/wiki/trie/wiki.trie
+- /home/zj/EntityLinkingWeb/data/baidu/trie/baidu_word.trie（不知道怎么生成，好像也没用到）
+- /home/zj/EntityLinkingWeb/data/wiki/trie/wiki_word.trie（不知道怎么生成，好像也没用到）
