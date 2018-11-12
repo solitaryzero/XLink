@@ -52,6 +52,7 @@ Actrius         _placeholder_           Actrius         In order to prepare hers
 - **项目路径**(18服务器)：`/home/xlore/xlink/TrainJointModel`
 - **输入**：第 1 步生成的 train\_kg 与 train\_text，具体路径可在 `./src/demo-align.sh` 中进行配置
 - **输出**：生成 `vectors_word` 与 `vectors_entity`，具体路径可在 `./src/demo-align.sh` 中进行配置
+- **运行方法**: 进入 `./src` 文件夹，运行 `./demo-align.sh`
 
 
 ### 2.2 构建 AC Trie Tree
@@ -61,7 +62,12 @@ Actrius         _placeholder_           Actrius         In order to prepare hers
 - **运行方法**：路径配置好之后，在项目路径下运行 `ant` 进行编译，随后运行 `ant BuildBaiduAll`
 
 ### 2.3 构建 Xlore Url Map
-
+- **项目路径**(18): `/home/xlore/xlink/DataPrepare`
+- **输入**: 数据源：XLore `Wikipedia20180301`版本数据，`/home/xlore/Wikipedia20180301/2_clean/ID`下的 `bd_lite_entity_newid.txt` 和 `en_lite_entity_newid.txt`，将其移动到 `./data/cooked/` 文件夹下，作为本程序的输入文件。路径可在 `XloreUrlGenerator.py`中更改
+- **输出**: 
+	- `baidu_entity_instance_url_map.dat`，格式为 `baidu_url\txlore_url`,
+	- `wiki_entity_instance_url_map.dat`，格式为 `wiki_title\txlore_url`
+- **运行方法**: `python3 XloreUrlGenerator.py`
 
 ## 3. 配置系统数据文件
 
@@ -80,5 +86,8 @@ Actrius         _placeholder_           Actrius         In order to prepare hers
 	- /home/zj/EntityLinkingWeb/data/wiki/trie/wiki.trie
 	- /home/zj/EntityLinkingWeb/data/baidu/trie/baidu_word.trie
 	- /home/zj/EntityLinkingWeb/data/wiki/trie/wiki_word.trie
+	- **Xlore Url Map**
+	- /home/zj/EntityLinkingWeb/data/urlmap/baidu_xlore_url.map
+	- /home/zj/EntityLinkingWeb/data/urlmap/wiki_xlore_url.map
 
 
