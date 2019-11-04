@@ -1,8 +1,17 @@
 # XLink
 Entity Linking System from KEG
 
+
+
+## XLink 数据更新工具
+
+<img src="./assets/20191104_XLink_DataUpdateTool.png" alt="Update Process|" style="width:100%" />
+
 ---
 
-**XLink 数据更新流程**请参照: [XLink 数据更新文档](https://github.com/XinruZhang/XLink/blob/master/XLink%20数据更新文档.md)
+## 参考文档
 
-**XLink 数据格式**请参照：[XLink 数据文件汇总](https://github.com/XinruZhang/XLink/blob/master/XLink%20数据文件汇总.md)
+\[1\]. [XLink 数据更新文档 V1](https://github.com/XinruZhang/XLink/blob/master/XLink%20数据更新文档.md)
+
+\[2\]. [XLink 数据文件汇总 V1](https://github.com/XinruZhang/XLink/blob/master/XLink%20数据文件汇总.md)
+
