@@ -166,7 +166,10 @@ def extract_wiki_corpus(corpus_path, train_text_path):
     return mention_anchors, out_links, exception_lines
 
 def generate_train_kg_from_out_links(out_links, train_kg_path):
+    print("\nGenerating train kg from out_links, train_kg_path: \n\t{}".format(train_kg_path))
+    start_at = int(time.time())
     with open(train_kg_path, "w", encoding="utf-8") as wf:
         for i in out_links:
             if len(out_links[i]) > 0:
                 wf.write(i + "\t" + ";".join(out_links[i]) + "\n")
+    print("Generated, time: {}".format(str(datetime.timedelta(seconds=int(time.time())-start_at))))

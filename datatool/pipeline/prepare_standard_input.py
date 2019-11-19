@@ -1,14 +1,16 @@
 import datetime
-import re
 import time
 import urllib
 import traceback
 
-from utils.entity import EntityHolder
+import utils.entity
+import utils.dictionary
 from utils.dictionary import EntityDictionary
 
 
-def get_id2title_from_ttl(ttl_path):
+def get_id2title_from_ttl(source, ttl_path):
+    print("\nLoading standard entity id-title from ttl path: \n\t{}".format(ttl_path))
+    start_at = int(time.time())
     inst_id = None
     inst_title = ""
     counter = 0
@@ -17,8 +19,6 @@ def get_id2title_from_ttl(ttl_path):
         for line in rf:
             counter += 1
             if counter < 20: continue
-            if counter % 1000000 == 0:
-                print(counter)
             line_inst_id = line.strip().split(">")[0][1:]
             if line_inst_id != inst_id:
                 if inst_id is not None:
@@ -26,46 +26,32 @@ def get_id2title_from_ttl(ttl_path):
                 inst_id = line_inst_id
                 inst_title = ""
             else:
-                if "property:supplement" in line:
-                    inst_title += "（" + line.strip().split("\"")[1].split("\"")[0] + "）"
-                elif "rdfs:label" in line:
+                if "property:supplement" in line: # this line represent sub_title
+                    sub_title = line.strip().split("\"")[1].split("\"")[0]
+                    if source == "bd":
+                        inst_title += "（{}）".format(sub_title)
+                    elif source == "wiki":
+                        inst_title += "({})".format(sub_title)
+                elif "rdfs:label" in line:  # this line represent title
                     inst_title += line.strip().split("\"")[1].split("\"")[0]
+    print("Entity id2title loaded, time consume: {}".format(str(datetime.timedelta(seconds=int(time.time())-start_at))))
     return id_to_title
 
 
-def get_title_sub_title_from_full_title(full_title):
-    st = re.split("[(（]", full_title)
-    if full_title[-1] in [")", "）"] and len(st)>1:
-        sub_title = st[-1][:-1]
-        title = ""
-        for t in st[:-1]:
-            tmp_st = re.split("[）)]", t)
-            if len(tmp_st) == 1:
-                title += tmp_st[0]
-            else:
-                title += "（" + tmp_st[0] + "）" + tmp_st[-1]
-        return title, sub_title
-    else:
-        return full_title, ""
-
-
-def generate_standard_entity_id(entity_path, id_holder: EntityHolder, standard_id2title):
-    entities_with_sub_title = 0
+def generate_standard_entity_id(entity_path, entity_maps: utils.entity.EntityMaps, standard_id2title):
+    print("\nGenerating standard entity dictionary...")
+    start_at = int(time.time())
+    total_valid = 0
     with open(entity_path, "w", encoding="utf-8") as wf:
-        for id in standard_id2title:
-            full_title = standard_id2title.get(id)
-            oid = id_holder.inst_label2id.get(full_title)
+        for nid in standard_id2title:
+            full_title = standard_id2title.get(nid)
+            oid = entity_maps.title2id.get(full_title)
             if oid is not None:
-                title = id_holder.inst_id2label[oid]
-                sub_title = full_title[len(title):]
-                if len(sub_title)>0:
-                    entities_with_sub_title += 1
-                    sub_title = sub_title[1:-1]
-                else:
-                    title, sub_title = get_title_sub_title_from_full_title(full_title)
-                uri = id_holder.inst_id2uri[oid]
-                wf.write("{}\t\t{}\t\t{}\t\t{}\n".format(title, sub_title, uri, id))
-
+                total_valid += 1
+                title, sub_title, uris = entity_maps.id2info[oid]
+                wf.write("{}\t\t{}\t\t{}\t\t{}\n".format(title, sub_title, "::;".join(uris), nid))
+    print("Entity dictionary generated, valid entities: #{},  time: {}, saved to file: \n\t{}".format(
+        total_valid, str(datetime.timedelta(seconds=int(time.time()) - start_at)), entity_path))
 
 """
 Functions for refine original corpus.
@@ -128,6 +114,7 @@ def corpus_refine(source, corpus_path, refined_path):
 
     start = int(time.time())
     last_update = start
+    print("\nRefining raw corpus: {}".format(corpus_path))
     with open(corpus_path, "r", encoding='utf-8') as rf:
         with open(refined_path, 'w', encoding='utf-8') as wf:
             for line in rf:
@@ -137,8 +124,8 @@ def corpus_refine(source, corpus_path, refined_path):
                 curr_update = int(time.time())
                 # noinspection PyBroadException
                 try:
-                    if total % 100000 == 0:
-                        print("#{}, batch_time: {}, total_time: {}".format(
+                    if total % 1000000 == 0:
+                        print("\t#{}, batch_time: {}, total_time: {}".format(
                             total,
                             str(datetime.timedelta(seconds=curr_update-last_update)),
                             str(datetime.timedelta(seconds=curr_update-start))
@@ -152,23 +139,24 @@ def corpus_refine(source, corpus_path, refined_path):
                     sub_title = line_arr[1].strip()
 
                     full_title = title
-                    if len(sub_title) > 1:
-                        if source == "bd": full_title += "（" + sub_title[1:-1] + "）"
-                        elif source == "wiki": full_title += "(" + sub_title[1:-1] + ")"
+                    if len(sub_title) > 1: full_title += sub_title
 
                     if source == 'bd':
                         url = line_arr[2][23:]
-                        if entity_dict.get_entity_by_uri(url) is not None:
+                        if entity_dict.get_entity_by_uri(url) is not None \
+                                and line_arr[3].split('::;', 1)[1].strip() != "":
                             wf.write("{}\t\t{}\n".format(
                                 entity_dict.get_entity_by_uri(url).get_id(),
                                 line_arr[3].split('::;', 1)[1]))
-                        elif entity_dict.get_entity_by_full_title(full_title) is not None:
+                        elif entity_dict.get_entity_by_full_title(full_title) is not None \
+                                and line_arr[3].split('::;', 1)[1].strip() != "":
                             wf.write("{}\t\t{}\n".format(
                                 entity_dict.get_entity_by_full_title(full_title).get_id(),
                                 line_arr[3].split('::;', 1)[1]))
 
                     if source == 'wiki':
-                        if entity_dict.get_entity_by_full_title(full_title) is not None:
+                        if entity_dict.get_entity_by_full_title(full_title) is not None\
+                                and line_arr[2].split('::;', 1)[1].strip() != "":
                             wf.write("{}\t\t{}\n".format(
                                 entity_dict.get_entity_by_full_title(full_title).get_id(),
                                 line_arr[2].split('::;', 1)[1]))
@@ -176,7 +164,8 @@ def corpus_refine(source, corpus_path, refined_path):
                     error_no += 1
                     # print("Exception on line: {}".format(total))
                     # traceback.print_exc()
-    print("Total processed: #{}, error lines: #{}, time: {}".format(total, error_no, str(datetime.timedelta(seconds=int(time.time())-start))))
+    print("Total processed: #{}, error lines: #{}, time: {}, refined corpus is saved to {}".format(
+        total, error_no, str(datetime.timedelta(seconds=int(time.time())-start)), refined_path))
     return total, error_no
 
 
@@ -190,7 +179,7 @@ Tool Functions:
 """
 def refine_annotation_by_split(source, annotated_text):
     # id_holder = Entity.get_instance(source)
-    entity_dict = EntityDictionary.get_instance(source)
+    entity_dict = EntityDictionary.get_instance(source)  # type: EntityDictionary
 
     # "a[[a|b]]s[[d]]v"
     plain_text, refined_annotated_text, mention_list = "", "", list()
@@ -213,7 +202,7 @@ def refine_annotation_by_split(source, annotated_text):
             if source == 'bd':
                 is_plain = True
             else:
-                instance_ids = entity_dict._mention2entities.get(mention)
+                instance_ids = entity_dict.mention2entities.get(mention)
                 if instance_ids is None or len(instance_ids)>1: is_plain = True
                 else: instance_id = list(instance_ids.keys())[0]
         else:
@@ -221,20 +210,15 @@ def refine_annotation_by_split(source, annotated_text):
                 title = split_annotation[0]
                 mention = split_annotation[1]
 
-                instance_ids = entity_dict._mention2entities.get(title)
-                if instance_ids is None or len(instance_ids) > 1:
-                    is_plain = True
-                else:
-                    instance_id = list(instance_ids.keys())[0]
-            else:
-                url = split_annotation[1]
-                mention = split_annotation[0]
-                url = urllib.parse.unquote(url)
-                url = "/".join(url.split("/")[:3])
-                entity = entity_dict.get_entity_by_uri(url)
+                entity = entity_dict.get_entity_by_full_title(title)
                 if entity is None: is_plain = True
-                else:
-                    instance_id = entity.get_id()
+                else: instance_id = entity.get_id()
+            else:
+                mention = split_annotation[0]
+                url = urllib.parse.unquote(split_annotation[1]).split("?")[0]
+                entity = entity_dict.get_entity_by_uri(url) # type: utils.dictionary.Entity
+                if entity is None: is_plain = True
+                else: instance_id = entity.get_id()
 
         if is_plain:
             refined_annotated_text += mention
@@ -249,6 +233,8 @@ def refine_annotation_by_split(source, annotated_text):
     return plain_text, refined_annotated_text, mention_list
 
 def corpus_annotation_refine(source, refined_path, annotation_refined_path):
+    start_at = int(time.time())
+    print("\nRefining annotations in pre-refined corpus:\n\t{}".format(refined_path))
     with open(refined_path, 'r', encoding='utf-8') as rf:
         with open(annotation_refined_path, 'w', encoding='utf-8') as wf:
             line_no = 0
@@ -260,13 +246,16 @@ def corpus_annotation_refine(source, refined_path, annotation_refined_path):
                     line_no += 1
                     if line_no % 100000 == 0:
                         curr_time = int(time.time())
-                        print("line_num: %d, time_consume: %s, total_time: %s" %
-                              (line_no, str(datetime.timedelta(seconds=curr_time-last_time)),
-                               str(datetime.timedelta(seconds=curr_time-start))))
+                        print("\t#{}, batch_time: {}, total_time: {}".format(
+                            line_no,
+                            str(datetime.timedelta(seconds=curr_time-last_time)),
+                            str(datetime.timedelta(seconds=curr_time-start))))
                         last_time = curr_time
                     instance_id, annotated_text = line.strip().split("\t\t")
                     plain_text, refined_annotated_text, mention_list = refine_annotation_by_split(source, annotated_text)
                     wf.write(instance_id + "\t\t" + refined_annotated_text.strip() + "\n")
                 except Exception:
                     print("Unexpected line: %d" % line_no)
-                    traceback.print_exc()
+    print("Total processed: {}, time consume: {}, refined file is saved to:\n\t{}".format(
+        line_no, str(datetime.timedelta(seconds=int(time.time())-start_at)), annotation_refined_path
+    ))

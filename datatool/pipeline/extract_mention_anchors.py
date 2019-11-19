@@ -49,15 +49,16 @@ def extract_mention_and_out_links_from_corpus(corpus_path):
     mention_anchors = dict()
     out_links = dict()
 
-    counter, mode_cnt = 0, 100000
+    counter, mode_cnt = 0, 1000000
     start_time = int(time.time())
     last_update = start_time
+    print("Extracting mention anchors and out links from corpus: \n\t{}".format(corpus_path))
     with open(corpus_path, "r", encoding="utf-8") as rf:
         for line in rf:
             counter += 1
             if counter % mode_cnt == 0:
                 curr_update = int(time.time())
-                print("{}, time: {}, total_time: {}".format(
+                print("\t#{}, batch_time: {}, total_time: {}".format(
                     counter,
                     str(datetime.timedelta(seconds=curr_update-last_update)),
                     str(datetime.timedelta(seconds=curr_update-start_time))
@@ -77,7 +78,13 @@ def extract_mention_and_out_links_from_corpus(corpus_path):
                     out_links[instance_id].add(anchor)
             except Exception as e:
                 print(counter, e)
-    return mention_anchors, out_links
+    ol = dict()
+    for i in out_links:
+        if len(out_links[i]) > 0:
+            ol[i] = out_links[i]
+    print("Extracted, total mentions: #{}, total time: {}".format(
+        len(mention_anchors), str(datetime.timedelta(seconds=int(time.time())-start_time))))
+    return mention_anchors, ol
 
 def merge_mention_anchors(mention_anchors_list):
     """
@@ -86,6 +93,8 @@ def merge_mention_anchors(mention_anchors_list):
     :param mention_anchors_list:
     :return:
     """
+    print("\nMerging mention anchors from {} sources".format(len(mention_anchors_list)))
+    start_at = int(time.time())
     ma = dict()
     for mention_anchors in mention_anchors_list:
         for mention in mention_anchors:
@@ -96,6 +105,8 @@ def merge_mention_anchors(mention_anchors_list):
                 if ma[mention].get(anchor) is None:
                     ma[mention][anchor] = 0
                 ma[mention][anchor] += mention_anchors[mention][anchor]
+    print("Merged, mentions: #{}, time: {}".format(
+        len(ma), str(datetime.timedelta(seconds=int(time.time())-start_at))))
     return ma
 
 def merge_out_links(out_links_list):
