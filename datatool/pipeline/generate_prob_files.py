@@ -30,7 +30,6 @@ class Parser:
         :return:
         """
         parsed_res_text = self.index_builder.parseText(doc)
-        print(parsed_res_text)
         text = parsed_res_text[1:-1]
         result = []
         if text != "":

@@ -1,5 +1,6 @@
 import datetime
 import time
+from utils.dictionary import EntityDictionary
 
 
 def extract_mention_and_plain_text_from_annotated_doc(document):
@@ -81,7 +82,7 @@ def extract_mention_and_out_links_from_corpus(corpus_path):
     ol = dict()
     for i in out_links:
         if len(out_links[i]) > 0:
-            ol[i] = out_links[i]
+            ol[i] = list(out_links[i])
     print("Extracted, total mentions: #{}, total time: {}".format(
         len(mention_anchors), str(datetime.timedelta(seconds=int(time.time())-start_time))))
     return mention_anchors, ol
@@ -116,6 +117,8 @@ def merge_out_links(out_links_list):
     :param out_links_list:
     :return:
     """
+    print("\nMerging out links from {} sources".format(len(out_links_list)))
+    start_at = int(time.time())
     ol = dict()
     for out_links in out_links_list:
         for inst in out_links:
@@ -125,5 +128,37 @@ def merge_out_links(out_links_list):
                 for out_inst in out_links[inst]:
                     ol[inst].add(out_inst)
     for i in ol:
-        ol[i] = list(ol[i])
+        if len(ol[i]) > 0:
+            ol[i] = list(ol[i])
+    print("Merged, out_links: #{}, time: {}".format(
+        len(ol), str(datetime.timedelta(seconds=int(time.time()) - start_at))))
     return ol
+
+def expand_mention_anchors(source, mention_anchors):
+    """
+    从 mention_anchor.json 扩充词典
+        a. 将满足以下条件的实体加入到全文统计的实体中，出现次数记为 1
+            - 其 title 与 mention-anchor 字典中的某一 mention 相同
+            - 该实体从未在语料中以 title 作为 mention 出现过
+        b. 对于 title 没有作为 mention 出现过的实体
+            - 以 title 作为 mention 构造 title-entity 字典
+
+    :param source: string
+    :param mention_anchors: dict
+    :return: (dict, dict)
+    """
+    entity_dict = EntityDictionary.get_instance(source)
+    title_entities = dict()
+
+    print("\nExpanding mention anchors from entity dictionary...")
+    start_at = int(time.time())
+    for instance_id in entity_dict.entity_dict:
+        mention = entity_dict.get_entity_by_id(instance_id).get_mention()
+        if mention_anchors.get(mention) is not None:
+            if mention_anchors[mention].get(instance_id) is None:
+                mention_anchors[mention][instance_id] = 1
+        else:
+            title_entities[mention] = instance_id
+    print("Expanded, title entities: #{}, mentions: #{}, time: {}".format(
+        len(title_entities), len(mention_anchors), str(datetime.timedelta(seconds=int(time.time())-start_at))))
+    return title_entities
