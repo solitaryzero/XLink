@@ -38,7 +38,7 @@ def get_id2title_from_ttl(source, ttl_path):
     return id_to_title
 
 
-def generate_standard_entity_id(entity_path, entity_maps: utils.entity.EntityMaps, standard_id2title):
+def generate_standard_entity_id(entity_path, entity_maps: utils.entity.EntityHolder, standard_id2title):
     print("\nGenerating standard entity dictionary...")
     start_at = int(time.time())
     total_valid = 0
@@ -92,6 +92,28 @@ def is_corpus_line_valid(source, line):
     line_arr = line.strip().split("\t\t")
     if source == 'bd' and len(line_arr) == 4 and is_annotation_valid(line_arr[3]): return True
     if source == 'wiki' and len(line_arr) == 3 and is_annotation_valid(line_arr[2]): return True
+
+
+def infobox_pre_refine(corpus_path, new_corpus_path):
+    start_at = int(time.time())
+    print("Pre-refining infobox raw corpus: {}".format(corpus_path))
+    import json
+    with open(corpus_path, "r", encoding="utf-8") as rf:
+        with open(new_corpus_path, "w", encoding="utf-8") as wf:
+            for line in rf:
+                try:
+                    title, sub_title, url, info = line.split("\t\t")
+                    info = json.JSONDecoder().decode(info.strip())
+                    new_info = ""
+
+                    for k in info:
+                        new_info += k + "," + info[k] + ","
+                    new_info.strip(",")
+                    wf.write("infobox::;{}\t\t{}\t\t{}\t\t{}\n".format(title, sub_title, url, new_info))
+                except Exception:
+                    continue
+    print("Infobox raw corpus is refined, time:{}, saved to:\n\t{}".format(
+        str(datetime.timedelta(seconds=int(time.time()) - start_at)), new_corpus_path))
 
 
 def corpus_refine(source, corpus_path, refined_path):
@@ -257,5 +279,4 @@ def corpus_annotation_refine(source, refined_path, annotation_refined_path):
                 except Exception:
                     print("Unexpected line: %d" % line_no)
     print("Total processed: {}, time consume: {}, refined file is saved to:\n\t{}".format(
-        line_no, str(datetime.timedelta(seconds=int(time.time())-start_at)), annotation_refined_path
-    ))
+        line_no, str(datetime.timedelta(seconds=int(time.time())-start_at)), annotation_refined_path))

@@ -104,7 +104,7 @@ def cal_4_prob_from_mention_anchors(mention_anchors):
         anchor = ""
         try:
             if mention == all: continue
-            mention_link[mention] =mention_anchors[mention][all]
+            mention_link[mention] = mention_anchors[mention][all]
             e_given_m[mention] = dict()
             for anchor in mention_anchors[mention]:
                 if anchor == all: continue
