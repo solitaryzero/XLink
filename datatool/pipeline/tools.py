@@ -18,6 +18,14 @@ def cal_unique_anchors(mention_anchors):
     return inst
 
 
+def cal_unique_refers(out_links):
+    inst = set()
+    for o in out_links:
+        for r in out_links[o]:
+            inst.add(r)
+    return inst
+
+
 def trim_train_text_punctuations(train_text_line, punctuations):
     trimmed_line = ""
     splitted_segs = train_text_line.split("[[")
@@ -87,3 +95,10 @@ def cal_linked_entities(out_links):
         for o in out_links[i]:
             inst.add(o)
     return inst
+
+def cal_total_links(mention_anchors) -> int:
+    total = 0
+    for m in mention_anchors:
+        for a in mention_anchors[m]:
+            total += mention_anchors[m][a]
+    return total

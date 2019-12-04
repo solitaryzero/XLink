@@ -1,6 +1,7 @@
 from typing import Dict
 import time
 import datetime
+import struct
 
 
 class EntityHolder:

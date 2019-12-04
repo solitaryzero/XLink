@@ -162,3 +162,25 @@ def expand_mention_anchors(source, mention_anchors):
     print("Expanded, title entities: #{}, mentions: #{}, time: {}".format(
         len(title_entities), len(mention_anchors), str(datetime.timedelta(seconds=int(time.time())-start_at))))
     return title_entities
+
+
+def filter_mention_anchors(mention_anchors, link_m, freq_m, link_prob_th) -> dict:
+    """
+    1. filter out len(m) < 1
+    2. expand mention_anchors from entity dictionary
+    3. filter out link(m) < 2
+    4. filter out link_prob(m) < 0.0001
+    :param mention_anchors:
+    :return:
+    """
+    ma = dict()
+    for m in mention_anchors:
+        if len(m) > 1:
+            ma[m] = mention_anchors[m]
+    nma = dict()
+    for m in ma:
+        if m == '__all__': continue
+        if link_m.get(m) is None or freq_m.get(m) is None or link_m[m] < 2: continue
+        if (float)(link_m[m]/freq_m[m]) < link_prob_th: continue
+        nma[m] = ma[m]
+    return nma

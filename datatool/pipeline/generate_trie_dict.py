@@ -23,7 +23,11 @@ def generate_title_entities_txt_for_trie(title_entities, title_entities_txt_path
     print("Generated, time: {}".format(str(datetime.timedelta(seconds=int(time.time())-start_at))))
 
 def generate_vocab_word_for_trie(emb_vocab_path, vocab_word_txt_path):
+    print("\nGenerating file for building title_entities trie tree, target file path: \n\t{}"
+          .format(vocab_word_txt_path))
+    start_at = int(time.time())
     with open(emb_vocab_path, "r", encoding="utf-8") as rf:
         with open(vocab_word_txt_path, "w", encoding="utf-8") as wf:
             for line in rf:
-                wf.write("::=".join(line.split(" "))+"\n")
+                wf.write("::=".join(line.split(" ")))
+    print("Generated, time: {}".format(str(datetime.timedelta(seconds=int(time.time())-start_at))))

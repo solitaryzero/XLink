@@ -125,9 +125,9 @@ class Entity:
     def get_full_title(self):
         if self._sub_title is not None and self._sub_title.strip() != "":
             if self._language == 'en':
-                return "{}({})".format(self._title, self._sub_title)
+                return "{}{}".format(self._title, self._sub_title)
             else:
-                return "{}（{}）".format(self._title, self._sub_title)
+                return "{}{}".format(self._title, self._sub_title)
         else:
             return self._title
 

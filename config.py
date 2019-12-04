@@ -20,3 +20,11 @@ class Config:
     @classmethod
     def get_entity_id_path(cls, source):
         return cls.get_file_full_path(source, "entity_id.txt")
+
+    @classmethod
+    def is_source_valid(cls, source):
+        return source in cls.get_sources()
+
+    @classmethod
+    def get_sources(cls):
+        return ['bd', 'wiki']
