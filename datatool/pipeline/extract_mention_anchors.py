@@ -1,5 +1,6 @@
 import datetime
 import time
+
 from utils.dictionary import EntityDictionary
 
 
@@ -71,6 +72,7 @@ def extract_mention_and_out_links_from_corpus(corpus_path):
                 if out_links.get(instance_id) is None:
                     out_links[instance_id] = set()
                 for mention, anchor, offset in mention_anchor_list:
+                    mention = mention.lower()
                     if mention_anchors.get(mention) is None:
                         mention_anchors[mention] = dict()
                     if mention_anchors[mention].get(anchor) is None:
@@ -148,6 +150,7 @@ def expand_mention_anchors(source, mention_anchors):
     :return: (dict, dict)
     """
     entity_dict = EntityDictionary.get_instance(source)
+
     title_entities = dict()
 
     print("\nExpanding mention anchors from entity dictionary...")

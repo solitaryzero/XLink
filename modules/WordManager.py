@@ -1,7 +1,7 @@
 """
 WordManager holds all words who have embeddings.
 """
-from evaluation.build_dataset.modules.VecModel import VecModel
+from modules.VecModel import VecModel
 
 
 class WordManager:

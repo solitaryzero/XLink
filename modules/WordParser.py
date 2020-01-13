@@ -10,10 +10,12 @@ Example Usage:
 """
 
 from abc import ABCMeta, abstractmethod
-from config import Config
-from jpype import *
 from typing import List
+
 import jieba
+from jpype import *
+
+from config import Config
 
 
 class WordParser(metaclass=ABCMeta):
@@ -75,3 +77,7 @@ class JiebaWordParser(WordParser):
     def parse_text(self, text):
         words = [item for item in jieba.cut(text)]
         return words
+
+class EnWordParser(WordParser):
+    def parse_text(self, text: str):
+        return [item.strip() for item in text.strip().split(" ") if len(item.strip())>0]

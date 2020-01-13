@@ -94,22 +94,34 @@ def is_corpus_line_valid(source, line):
     if source == 'wiki' and len(line_arr) == 3 and is_annotation_valid(line_arr[2]): return True
 
 
-def infobox_pre_refine(corpus_path, new_corpus_path):
+def infobox_pre_refine(source, corpus_path, new_corpus_path):
     start_at = int(time.time())
     print("Pre-refining infobox raw corpus: {}".format(corpus_path))
     import json
+    from config import Config
     with open(corpus_path, "r", encoding="utf-8") as rf:
         with open(new_corpus_path, "w", encoding="utf-8") as wf:
             for line in rf:
                 try:
-                    title, sub_title, url, info = line.split("\t\t")
-                    info = json.JSONDecoder().decode(info.strip())
-                    new_info = ""
+                    if source not in Config.get_sources(): break
+                    if source == 'bd':
+                        title, sub_title, url, info = line.split("\t\t")
+                        info = json.JSONDecoder().decode(info.strip())
+                        new_info = ""
 
-                    for k in info:
-                        new_info += k + "," + info[k] + ","
-                    new_info.strip(",")
-                    wf.write("infobox::;{}\t\t{}\t\t{}\t\t{}\n".format(title, sub_title, url, new_info))
+                        for k in info:
+                            new_info += k + "," + info[k] + ","
+                        new_info.strip(",")
+                        wf.write("{}\t\t{}\t\t{}\t\tinfobox::;{}\n".format(title, sub_title, url, new_info))
+                    elif source == 'wiki': # wiki
+                        title, url, info = line.split("\t\t")
+                        info = json.JSONDecoder().decode(info.strip())
+                        new_info = ""
+
+                        for k in info:
+                            new_info += k + "," + info[k] + ","
+                        new_info.strip(",")
+                        wf.write("{}\t\t{}\t\tinfobox::;{}\n".format(title, url, new_info))
                 except Exception:
                     continue
     print("Infobox raw corpus is refined, time:{}, saved to:\n\t{}".format(
@@ -157,13 +169,14 @@ def corpus_refine(source, corpus_path, refined_path):
                     if not is_corpus_line_valid(source, line): continue
 
                     line_arr  = line.strip().split("\t\t")
-                    title     = line_arr[0].strip()
-                    sub_title = line_arr[1].strip()
-
-                    full_title = title
-                    if len(sub_title) > 1: full_title += sub_title
 
                     if source == 'bd':
+                        title = line_arr[0].strip()
+                        sub_title = line_arr[1].strip()
+
+                        full_title = title
+                        if len(sub_title) > 1: full_title += sub_title
+
                         url = line_arr[2][23:]
                         if entity_dict.get_entity_by_uri(url) is not None \
                                 and line_arr[3].split('::;', 1)[1].strip() != "":
@@ -177,6 +190,7 @@ def corpus_refine(source, corpus_path, refined_path):
                                 line_arr[3].split('::;', 1)[1]))
 
                     if source == 'wiki':
+                        full_title = line_arr[0].strip()
                         if entity_dict.get_entity_by_full_title(full_title) is not None\
                                 and line_arr[2].split('::;', 1)[1].strip() != "":
                             wf.write("{}\t\t{}\n".format(

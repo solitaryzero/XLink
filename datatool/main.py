@@ -16,7 +16,7 @@ def generate_standard_corpus(source, data_path, corpus_name) -> None:
     from datatool.pipeline import prepare_standard_input as prep_input
     imp.reload(prep_input)
     if corpus_name == "infobox":
-        prep_input.infobox_pre_refine(
+        prep_input.infobox_pre_refine(source,
             os.path.join(data_path, "pre_raw_{}.txt".format(corpus_name)),
             raw_corpus_path)
     prep_input.corpus_refine(source, raw_corpus_path, refined_corpus_path)
@@ -31,6 +31,7 @@ def statistics_about_mention_anchors_and_out_links(mention_anchors: dict, out_li
     referred_entities = tools.cal_unique_refers(out_links)
     print("\tmentions #{}".format(len(mention_anchors)))
     print("\tanchors #{}".format(tools.cal_total_links(mention_anchors)))
+    print("\tunique_anchors #{}".format(len(tools.cal_unique_anchors(mention_anchors))))
     print("\treferred entities: #{}".format(len(referred_entities)))
     print("\tvalid out links: #{}".format(len(out_links)))
     print("\tcandidate=1: #{}".format(tools.cal_mention_eq(mention_anchors, 1)))
@@ -88,7 +89,7 @@ def merge_multiple_mention_anchors(data_path: str, corpus_list: list, is_save=Fa
     return mention_anchors, out_links
 
 def expand_mention_anchors_by_entity_dict(source, data_path, mention_anchors, is_save=False) -> tuple:
-    import json, os, imp
+    import json, imp
     from datatool.pipeline import extract_mention_anchors, generate_trie_dict
     imp.reload(extract_mention_anchors)
     imp.reload(generate_trie_dict)
@@ -104,7 +105,10 @@ def expand_mention_anchors_by_entity_dict(source, data_path, mention_anchors, is
 def init_JVM():
     from config import Config
     jar_path = Config.project_root + "data/jar/BuildIndex.jar"
-    startJVM(getDefaultJVMPath(), "-Djava.class.path=%s" % jar_path)
+    if not isJVMStarted():
+        startJVM(getDefaultJVMPath(), "-Djava.class.path=%s" % jar_path)
+    if not isThreadAttachedToJVM():
+        attachThreadToJVM()
     JDClass = JClass("edu.TextParser")
     return JDClass
 
@@ -235,6 +239,25 @@ def generate_emb_train_text(source, data_path, corpus_name) -> None:
         # TODO: 没验证过
         extract_embedding_train.extract_wiki_corpus(standard_corpus_path, train_text_path)
 
+def filter_mention_anchor_by_entity_emb(source, mention_anchors, entity_dict_path, entity_vec_path):
+    from modules import EntityManager
+    import imp
+    imp.reload(EntityManager)
+
+    EManager = EntityManager.BaiduEntityManager
+    if source == 'wiki':
+        EManager = EntityManager.WikiEntityManager
+    entity_manager = EManager(entity_dict_path, entity_vec_path)
+    mas = dict()
+    for m in mention_anchors:
+        mas[m] = dict()
+        for a in mention_anchors[m]:
+            if entity_manager.is_entity_has_embed(a):
+                mas[m][a] = mention_anchors[m][a]
+        if len(mas[m]) == 0:
+            del mas[m]
+    return mas
+
 def generate_prob_files(data_path) -> None:
     import os, json, time, datetime
     from datatool.pipeline import generate_prob_files
@@ -252,13 +275,37 @@ def generate_prob_files(data_path) -> None:
     freq_m         = json.load(open(os.path.join(data_path, "freq_m.json")))
     generate_prob_files.generate_link_prob_file(e_given_m, mention_link, freq_m, link_prob_path)
 
+    link_prob_json_path = os.path.join(data_path, "link_prob.json")
+    link_prob = dict()
+    for m in e_given_m: link_prob[m] = float(mention_link[m])/freq_m[m]
+    json.dump(link_prob, open(link_prob_json_path, "w"))
+
     prob_mention_entity_path = os.path.join(data_path, "prob_mention_entity.dat")
     prob_mention_entity_json_path = os.path.join(data_path, "prob_mention_entity.json")
     generate_prob_files.generate_prob_mention_entity_file(m_given_e, prob_mention_entity_path,
                                                           prob_mention_entity_json_path)
-    print("Three prob files generated, time: {}, saved to: \n\t{}\n\t{}\n\t{}".format(
+    print("Four prob files generated, time: {}, saved to: \n\t{}\n\t{}\n\t{}\n\t{}".format(
         str(datetime.timedelta(seconds=int(time.time()) - start_at)),
-        entity_prior_path, link_prob_path, prob_mention_entity_path))
+        entity_prior_path, link_prob_path, prob_mention_entity_path, link_prob_json_path))
+
+def filter_title_entities(source, data_path):
+    import json, os, imp
+    from modules import EntityManager
+    imp.reload(EntityManager)
+
+    EManager = None # type: EntityManager.EntityManager
+    if source == 'bd': EManager = EntityManager.BaiduEntityManager
+    if source == 'wiki': EManager = EntityManager.WikiEntityManager
+
+    entity_manager = EManager(data_path + "entity_id.txt", data_path + "emb/result300/vectors_entity")
+    title_entities = json.load(open(os.path.join(data_path, "title_entities.json"), "r"))
+    refined_tt = dict()
+    for title in title_entities:
+        if entity_manager.is_entity_has_embed(title_entities[title]):
+            refined_tt[title] = title_entities[title]
+    json.dump(refined_tt, open(os.path.join(data_path, "title_entities.json"), "w"))
+    return refined_tt
+
 
 if __name__ == "__main__":
     source, corpus_name = "bd", "abstract"
@@ -277,10 +324,10 @@ if __name__ == "__main__":
     # 2.1 抽取 mention_anchors 和 out_links
     _m, _o = generate_mention_anchors_and_out_links(data_path, corpus_name)
     corpus_list = ["abstract", "article", "infobox"]
-    merge_multiple_mention_anchors(data_path, corpus_list)
+    _, __ = merge_multiple_mention_anchors(data_path, corpus_list, is_save=True)
 
     # 2.2 由 standard_corpus 生成 train_text
-    generate_emb_train_text(source, data_path, corpus_name) # 中文 30h
+    generate_emb_train_text(source, data_path, corpus_name) # 中文 30h，英文很快
 
     # 第三步
     # 3.1 生成 mention_anchors.trie 来计算 freq(m)
@@ -292,7 +339,7 @@ if __name__ == "__main__":
     # 第四步
     # 4.1 全文统计 freq(m)
     JDClass = init_JVM()
-    _fm = calculate_freq_m(data_path, corpus_name, JDClass) # 中文 13h
+    _fm = calculate_freq_m(data_path, corpus_name, JDClass) # 中文 13h, 英文 58h
     shutdownJVM()
 
     corpus_list = ["abstract", "article", "infobox"]
@@ -305,19 +352,18 @@ if __name__ == "__main__":
     # 第五步
     # 5.1 根据 freq(m) refine mention_anchors.
     mention_anchors = refine_mention_anchors_by_freq_m(data_path, freq_m)
-    expand_mention_anchors_by_entity_dict(source, data_path, mention_anchors)
+    ma, tt = expand_mention_anchors_by_entity_dict(source, data_path, mention_anchors)
 
     # 5.2 过滤 link(m)<2 和 link_prob(m)<0.0001 的 mentions
-    mention_anchors = filter_mention_anchors_by_len_and_prob(
-        data_path, 0.0001, None, None, freq_m)
+    mention_anchors = filter_mention_anchors_by_len_and_prob(data_path, 0.0001, ma, None, freq_m)
     # 5.3 从训练得到的词表 vocab_word 得到 vocab_word.trie
     generate_vocab_word_for_trie(data_path)
 
 
     # 第六步
     # 6.1 重新 expand mention anchors 得到没有统计值的 title_entities
-    expand_mention_anchors_by_entity_dict(source, data_path, mention_anchors)
-
+    ma, tt = expand_mention_anchors_by_entity_dict(source, data_path, mention_anchors, is_save=True)
+    _ = filter_title_entities(source, data_path)
 
     # 第七、八步
     # 7.1 生成 title_entities.txt 和 mention_anchors.txt

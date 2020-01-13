@@ -1,8 +1,9 @@
-from typing import Dict
-import time
 import datetime
-from config import Config
 import re
+import time
+from typing import Dict
+
+from config import Config
 
 
 class EntityDictionary:
@@ -56,7 +57,7 @@ class EntityDictionary:
         if self._source in ["bd"]:
             self._language = "zh"
         elif self._source in ["wiki"]:
-            self._language = "wiki"
+            self._language = "en"
 
         print("\nLoading entities from {}".format(entity_dict_path))
         print("\tsource: {}\n\tlanguage: {}".format(self._source, self._language))

@@ -1,8 +1,11 @@
-from evaluation.build_dataset.modules.VecModel import VecModel
-from typing import Dict, List
-from abc import ABCMeta, abstractmethod
+import datetime
 import re
-import time, datetime
+import time
+from abc import ABCMeta, abstractmethod
+from typing import Dict
+
+from models import Entity
+from modules.VecModel import VecModel
 
 
 class EntityDictionary:
@@ -53,15 +56,28 @@ class EntityDictionary:
             mention += re.split("[)）]", t)[-1]
         return mention
 
+    def get_entity_from_id(self, entity_id):
+        return self.entity_dict.get(entity_id)
+
+    def get_entity_from_uri(self, entity_uri):
+        if self._uri_2_id.get(entity_uri) is None: return None
+        return self.entity_dict.get(self._uri_2_id.get(entity_uri))
+
+    def get_entity_from_fulltitle(self, entity_title):
+        if self._fulltitle_2_id.get(entity_title) is None: return None
+        return self.entity_dict.get(self._fulltitle_2_id.get(entity_title))
 
 class EntityManager(metaclass=ABCMeta):
-
     @abstractmethod
-    def get_entity_dictionary(self):
+    def get_entity_dictionary(self) -> EntityDictionary:
         pass
 
     @abstractmethod
     def is_entity_has_embed(self, entity_id):
+        pass
+
+    @abstractmethod
+    def get_vec_model(self) -> VecModel:
         pass
 
 
@@ -98,7 +114,7 @@ class BaiduEntityManager(EntityManager):
 
 class WikiEntityManager(EntityManager):
     def __new__(cls, dict_path, vec_path, force_reload=False):
-        if not hasattr(BaiduEntityManager, 'instance'):
+        if not hasattr(WikiEntityManager, 'instance'):
             print("Initializing WikiEntityManager...\n\tsource: {}\n\tlanguage:{}")
             cls.instance = super(WikiEntityManager, cls).__new__(cls)
             cls.instance.init(dict_path, vec_path)
@@ -127,28 +143,3 @@ class WikiEntityManager(EntityManager):
 
     def is_entity_has_embed(self, entity_id):
         return self.vec_model.vectors.get(entity_id) is not None
-
-
-class Entity:
-    ID = None           # type: str
-    full_title = None   # type: str
-    title = None        # type: str
-    sub_title = None    # type: str
-    language = None     # type: str
-    source = None       # type: str
-    embed = None        # type: List[float]
-
-    def __init__(self, entity_id, title, sub_title, source, language, embed=None):
-        self.ID = entity_id
-        self.full_title = title + sub_title
-        self.title = title
-        self.sub_title = sub_title
-        self.source = source
-        self.language = language
-        self.embed = embed
-
-    def set_embed(self, embed: List[float]):
-        self.embed = embed
-
-    def get_full_title(self):
-        return self.full_title

@@ -1,4 +1,6 @@
-import struct, time, datetime
+import datetime
+import struct
+import time
 
 
 class BinaryReader:
@@ -81,13 +83,17 @@ class VecModel:
             self.vectors = {}
             counter = 0
             while 1:
+                counter += 1
+                if counter %100000 == 0:
+                    print("\t#"+str(counter))
                 word, vec = self.readOneWordEmbedding()
+
                 if word != '':
                     self.vectors[word] = vec
-                    counter += 1
-                    if counter %100000 == 0:
-                        print("\t#"+str(counter))
-                else: break
+                else:
+                    if counter >= self.words_num:
+                        break
+
             print('Loaded, excepted num #{}, loaded: #{}, time: {}'.format(
                 self.words_num, counter, str(datetime.timedelta(seconds=int(time.time())-start_time))))
             return self.vectors
