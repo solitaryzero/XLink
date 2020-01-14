@@ -24,15 +24,11 @@ class AIDAYAGO2Formatter(AnnotationFormatter):
     def init(self, entity_dict_path, entity_vec_path):
         self.entity_manager = EntityManager.WikiEntityManager(entity_dict_path, entity_vec_path)
 
-    def format(self, raw_dataset_path, target_dataset_dir):
-        nme_mentions = []
-        total_mentions = []
-        NIL_mentions = []
+    def format(self, raw_dataset_path, target_dataset_dir, is_save=True):
+        total_mentions, nme_mentions, NIL_mentions = [], [], []
 
         mentions = []  # type: List[List[tuple]]
-        docs = []
-        xlore_misses = list()
-        valid_entities = list()
+        docs, xlore_misses, valid_entities = [], [], []
         with open(raw_dataset_path, "r", encoding="utf-8") as rf:
             doc_mentions = []  # type: List[List]
             doc = ""
@@ -75,15 +71,21 @@ class AIDAYAGO2Formatter(AnnotationFormatter):
                             doc += mention_label + ' '
                     else:
                         doc += line_arr[0] + " "
-
             if len(doc_mentions) > 0:
                 mentions.append(doc_mentions)
                 docs.append(doc)
 
-        json.dump(mentions, open(os.path.join(target_dataset_dir, "annotations.json"), "w", encoding="utf-8"), indent=4, ensure_ascii=False)
-        json.dump(docs, open(os.path.join(target_dataset_dir, "docs.json"), "w", encoding="utf-8"), indent=4, ensure_ascii=False)
-        json.dump(xlore_misses, open(os.path.join(target_dataset_dir, "xlore_misses.json"), "w", encoding="utf-8"), indent=4, ensure_ascii=False)
-        json.dump(valid_entities, open(os.path.join(target_dataset_dir, "valid_entities.json"), "w", encoding="utf-8"), indent=4, ensure_ascii=False)
+        if is_save:
+            json.dump(mentions, open(os.path.join(target_dataset_dir, "annotations.json"), "w", encoding="utf-8"), indent=4, ensure_ascii=False)
+            json.dump(docs, open(os.path.join(target_dataset_dir, "docs.json"), "w", encoding="utf-8"), indent=4, ensure_ascii=False)
+            json.dump(xlore_misses, open(os.path.join(target_dataset_dir, "xlore_misses.json"), "w", encoding="utf-8"), indent=4, ensure_ascii=False)
+            json.dump(valid_entities, open(os.path.join(target_dataset_dir, "valid_entities.json"), "w", encoding="utf-8"), indent=4, ensure_ascii=False)
+
+        self.report_result(docs, total_mentions, NIL_mentions, xlore_misses, nme_mentions)
+
+        return total_mentions, NIL_mentions, xlore_misses, nme_mentions
+
+    def report_result(self, docs, total_mentions, NIL_mentions, xlore_misses, nme_mentions):
         print("Total Document: #{}\n"
               "Total Labeled Mentions\t total: #{}\t unique: #{}\n"
               "NIL Mentions({}%)\t total: #{}\t unique: #{}\n"
@@ -91,7 +93,7 @@ class AIDAYAGO2Formatter(AnnotationFormatter):
               "NME Mentions({}%)\t total: #{}\t unique: #{}\n".format(
             len(docs),
             len(total_mentions), len(set(total_mentions)),
-            "%.2f"%(len(NIL_mentions)/len(total_mentions)*100), len(NIL_mentions), len(set(NIL_mentions)),
-            "%.2f"%(len(xlore_misses)/len(total_mentions)*100), len(xlore_misses), len(set(xlore_misses)),
-            "%.2f"%(len(nme_mentions)/len(total_mentions)*100), len(nme_mentions), len(set(nme_mentions))))
-        return total_mentions, NIL_mentions, xlore_misses, nme_mentions
+            "%.2f" % (len(NIL_mentions) / len(total_mentions) * 100), len(NIL_mentions), len(set(NIL_mentions)),
+            "%.2f" % (len(xlore_misses) / len(total_mentions) * 100), len(xlore_misses), len(set(xlore_misses)),
+            "%.2f" % (len(nme_mentions) / len(total_mentions) * 100), len(nme_mentions), len(set(nme_mentions))))
+
