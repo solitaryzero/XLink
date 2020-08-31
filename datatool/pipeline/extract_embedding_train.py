@@ -3,6 +3,7 @@ import time
 import datetime
 import traceback
 from utils.mention import extract_mention_and_plain_text_from_annotated_doc
+import re
 
 
 punctuations = "!！?？/\'\".,:()\-\n·;。＂＃＄％＆＇（）＊＋，－／：；＜＝=＞＠［＼］＾＿｀｛｜｝{|}～｟｠｢｣､、〃《》<>「」『』【】〔〕〖〗〘〙〚〛〜〝〞〟〰〾〿–—‘’‛“”„‟…‧﹏"
@@ -34,6 +35,11 @@ def extract_bd_corpus(corpus_path, train_text_path):
                 last_update = curr_update
             try:
                 instance_id, document = line.strip().split("\t\t")
+
+                # 2020.8.20 strip spaces between chinese words
+                document = re.sub(r'([^a-zA-Z])( )([^a-zA-Z])', r'\1\3', document)
+                document = document.lower()
+
                 mention_anchor_list, plain_doc = extract_mention_and_plain_text_from_annotated_doc(document)
 
                 splitted_words = list(jieba.cut(plain_doc))

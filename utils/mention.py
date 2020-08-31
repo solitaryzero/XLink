@@ -24,6 +24,7 @@ def extract_mention_and_plain_text_from_annotated_doc(document):
     for seg_index in range(1, len(split_segs)):
         seg = split_segs[seg_index]
         seg_segs = seg.split("]]")
+        
         instance_id, mention = seg_segs[0].split("|")
 
         mention_anchor_list.append([mention, instance_id, len(plain_text)])

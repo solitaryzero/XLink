@@ -37,6 +37,7 @@ def extract_mention_and_plain_text_from_annotated_doc(document):
 
         if len(seg_segs) > 1:
             plain_text += seg_segs[1]
+
     return mention_anchor_list, plain_text
 
 

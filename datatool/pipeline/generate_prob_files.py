@@ -69,6 +69,10 @@ def cal_4_prob_from_mention_anchors(mention_anchors):
     for mention in mention_anchors:
         mention_anchors[mention][all] = 0
         for anchor in mention_anchors[mention]:
+
+            # 2020.8.11: Fix the 0.5 bug
+            if anchor == all: continue
+
             if anchor_mentions.get(anchor) is None:
                 anchor_mentions[anchor] = dict()
                 anchor_mentions[anchor][all] = 0
@@ -156,14 +160,14 @@ def cal_freq_m(corpus_path, mention_anchor_path, trie_tree_path, JDClass: JClass
 
 
 def generate_entity_prior_file(entity_prior, entity_prior_path, entity_prior_json_path):
-    json.dump(entity_prior, open(entity_prior_json_path, "w"))
+    json.dump(entity_prior, open(entity_prior_json_path, "w", encoding="utf-8"))
     with open(entity_prior_path, "w", encoding="utf-8") as wf:
         for entity in entity_prior:
             wf.write("{}::;{}\n".format(entity, str(entity_prior[entity])))
 
 
 def generate_prob_mention_entity_file(m_given_e, prob_mention_entity_path, prob_mention_entity_json_path):
-    json.dump(m_given_e, open(prob_mention_entity_json_path, "w"))
+    json.dump(m_given_e, open(prob_mention_entity_json_path, "w", encoding="utf-8"))
     with open(prob_mention_entity_path, "w", encoding="utf-8") as wf:
         for entity in m_given_e:
             for m in m_given_e[entity]:

@@ -15,11 +15,11 @@ class Config:
 
     @classmethod
     def get_instance_id_path(cls, source):
-        return cls.get_file_full_path(source, "instance_id.txt")
+        return cls.get_file_full_path(source, "bd_instance_ID.txt")
 
     @classmethod
     def get_entity_id_path(cls, source):
-        return cls.get_file_full_path(source, "entity_id.txt")
+        return cls.get_file_full_path(source, "bd_instance_ID.txt")
 
     @classmethod
     def is_source_valid(cls, source):

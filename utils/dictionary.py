@@ -64,6 +64,7 @@ class EntityDictionary:
 
         counter = 0
         start_time = int(time.time())
+        prefix = 'https://baike.baidu.com/item/'
         with open(entity_dict_path, "r", encoding="utf-8") as rf:
             for line in rf:
                 line_arr = line.strip().split("\t\t")
@@ -72,6 +73,8 @@ class EntityDictionary:
                 uris = uris.split("::;")
 
                 counter += 1
+                # uris = [(prefix+u[len(prefix):].split('/')[0]).lower() for u in uris]
+                uris = [(prefix+u[len(prefix):].split('?')[0]).lower() for u in uris]
                 entity = Entity(source, entity_id, title, self._language, uris, sub_title)  # type: Entity
 
                 self.entity_dict[entity_id] = entity
@@ -96,7 +99,14 @@ class EntityDictionary:
         return self.title2entity.get(full_title)
 
     def get_entity_by_uri(self, uri) -> object:
-        return self.uri2entity.get(uri)
+        # 2020.8.17 augmented uri match
+        uri = uri.lower()
+        res = self.uri2entity.get(uri)
+        if (res is None):
+            new_uri = '/'.join(uri.split('/')[:-1])
+            return self.uri2entity.get(new_uri)
+        else:
+            return res
 
     @staticmethod
     def get_mention_from_title(title: str) -> str:

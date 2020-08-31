@@ -1,4 +1,6 @@
 from jpype import *
+import subprocess
+import os
 
 def generate_standard_entity_dict(source, old_entity_path, entity_ttl_path, standard_entity_path) -> None:
     from utils.entity import EntityHolder
@@ -9,17 +11,18 @@ def generate_standard_entity_dict(source, old_entity_path, entity_ttl_path, stan
 
 def generate_standard_corpus(source, data_path, corpus_name) -> None:
     import os, imp
-    raw_corpus_path = os.path.join(data_path, "raw_{}.txt".format(corpus_name))
+    raw_corpus_path = os.path.join(data_path, "bd_{}.txt".format(corpus_name))
     refined_corpus_path = os.path.join(data_path, "refined_{}.txt".format(corpus_name))
     standard_corpus_path = os.path.join(data_path, "standard_{}.txt".format(corpus_name))
 
     from datatool.pipeline import prepare_standard_input as prep_input
     imp.reload(prep_input)
     if corpus_name == "infobox":
-        prep_input.infobox_pre_refine(source,
-            os.path.join(data_path, "pre_raw_{}.txt".format(corpus_name)),
-            raw_corpus_path)
-    prep_input.corpus_refine(source, raw_corpus_path, refined_corpus_path)
+        prep_input.infobox_pre_refine(source, raw_corpus_path,
+            os.path.join(data_path, "pre_raw_{}.txt".format(corpus_name)))
+        prep_input.corpus_refine(source, os.path.join(data_path, "pre_raw_{}.txt".format(corpus_name)), refined_corpus_path)
+    else:    
+        prep_input.corpus_refine(source, raw_corpus_path, refined_corpus_path)
     prep_input.corpus_annotation_refine(source, refined_corpus_path, standard_corpus_path)
 
 def statistics_about_mention_anchors_and_out_links(mention_anchors: dict, out_links: dict) -> None:
@@ -51,8 +54,8 @@ def generate_mention_anchors_and_out_links(data_path: str, corpus_name: str) -> 
     start_at = int(time.time())
     print("Saving mention_anchors and out_links to file:\n\t{}\n\t{}".format(
         mention_anchors_json_path, out_links_json_path))
-    json.dump(mention_anchors, open(mention_anchors_json_path, "w"))
-    json.dump(out_links, open(out_links_json_path, "w"))
+    json.dump(mention_anchors, open(mention_anchors_json_path, "w", encoding="utf-8"))
+    json.dump(out_links, open(out_links_json_path, "w", encoding="utf-8"))
     print("Json files saved. time: {}".format(
         str(datetime.timedelta(seconds=int(time.time()) - start_at))
     ))
@@ -70,16 +73,16 @@ def merge_multiple_mention_anchors(data_path: str, corpus_list: list, is_save=Fa
     for corpus in corpus_list:
         mention_anchors_json_path = os.path.join(data_path, "mention_anchors_{}.json".format(corpus))
         out_links_json_path = os.path.join(data_path,  "out_links_{}.json".format(corpus))
-        mention_anchors_list.append(json.load(open(mention_anchors_json_path, "r")))
-        out_links_list.append(json.load(open(out_links_json_path, "r")))
+        mention_anchors_list.append(json.load(open(mention_anchors_json_path, "r", encoding="utf-8")))
+        out_links_list.append(json.load(open(out_links_json_path, "r", encoding="utf-8")))
     mention_anchors = extract_mention_anchors.merge_mention_anchors(mention_anchors_list)
     out_links = extract_mention_anchors.merge_out_links(out_links_list)
 
     if is_save:
         mention_anchors_json_path = os.path.join(data_path, "mention_anchors.json")
-        json.dump(mention_anchors, open(mention_anchors_json_path, "w"))
+        json.dump(mention_anchors, open(mention_anchors_json_path, "w", encoding="utf-8"))
         out_links_json_path = os.path.join(data_path, "out_links.json")
-        json.dump(out_links, open(out_links_json_path, "w"))
+        json.dump(out_links, open(out_links_json_path, "w", encoding="utf-8"))
         print("Finished, time: {}. merged files have been saved to: \n\t{}\n\t{}".format(
             str(datetime.timedelta(seconds=int(time.time()) - start_at)),
             mention_anchors_json_path,
@@ -97,14 +100,15 @@ def expand_mention_anchors_by_entity_dict(source, data_path, mention_anchors, is
     title_entities = extract_mention_anchors.expand_mention_anchors(source, mention_anchors)
 
     if is_save:
-        json.dump(mention_anchors, open(data_path + "mention_anchors.json", "w"))
-        json.dump(title_entities, open(data_path + "title_entities.json", "w"))
+        json.dump(mention_anchors, open(data_path + "mention_anchors.json", "w", encoding="utf-8"))
+        json.dump(title_entities, open(data_path + "title_entities.json", "w", encoding="utf-8"))
 
     return mention_anchors, title_entities
 
 def init_JVM():
     from config import Config
     jar_path = Config.project_root + "data/jar/BuildIndex.jar"
+
     if not isJVMStarted():
         startJVM(getDefaultJVMPath(), "-Djava.class.path=%s" % jar_path)
     if not isThreadAttachedToJVM():
@@ -119,9 +123,13 @@ def calculate_freq_m(data_path, corpus_name, JDClass) -> dict:
     standard_corpus_path = os.path.join(data_path, "standard_{}.txt".format(corpus_name))
     mention_anchors_txt_path = os.path.join(data_path, "mention_anchors.txt")
     mention_anchors_trie_path = os.path.join(data_path, "mention_anchors.trie")
+
+    if (os.path.exists(mention_anchors_trie_path)):
+        os.remove(mention_anchors_trie_path)
+
     freq_m = generate_prob_files.cal_freq_m(standard_corpus_path, mention_anchors_txt_path, mention_anchors_trie_path,
                                             JDClass)
-    json.dump(freq_m, open(os.path.join(data_path, "freq_m_{}.json".format(corpus_name)), "w"))
+    json.dump(freq_m, open(os.path.join(data_path, "freq_m_{}.json".format(corpus_name)), "w", encoding="utf-8"))
     return freq_m
 
 def merge_freq_m(data_path, corpus_list, is_save=False) -> dict:
@@ -130,7 +138,7 @@ def merge_freq_m(data_path, corpus_list, is_save=False) -> dict:
     freq_m_list = list()
     for corpus in corpus_list:
         freq_m_path = os.path.join(data_path, "freq_m_{}.json".format(corpus))
-        freq_m_list.append(json.load(open(freq_m_path, "r")))
+        freq_m_list.append(json.load(open(freq_m_path, "r", encoding="utf-8")))
     freq_m = generate_prob_files.merge_freq_m(freq_m_list)
     if is_save:
         json.dump(freq_m, open(os.path.join(data_path, "freq_m.json"), "w"))
@@ -140,12 +148,12 @@ def refine_mention_anchors_by_freq_m(data_path, freq_m, mention_anchors=None, is
     import os, json
     ma = dict()
     if mention_anchors is None:
-        mention_anchors = json.load(open(os.path.join(data_path, "mention_anchors.json"), "r"))
+        mention_anchors = json.load(open(os.path.join(data_path, "mention_anchors.json"), "r", encoding="utf-8"))
     for m in mention_anchors:
         if m in freq_m:
             ma[m] = mention_anchors[m]
     if is_save:
-        json.dump(ma, open(os.path.join(data_path, "mention_anchors.json"), "w"))
+        json.dump(ma, open(os.path.join(data_path, "mention_anchors.json"), "w", encoding="utf-8"))
     return ma
 
 def filter_mention_anchors_by_len_and_prob(
@@ -159,7 +167,7 @@ def filter_mention_anchors_by_len_and_prob(
     if mention_anchors is None:
         ma_path     = os.path.join(data_path, "mention_anchors.json")
         print("\nLoading mention_anchors from file: {}".format(ma_path))
-        mention_anchors = json.load(open(ma_path, "r"))
+        mention_anchors = json.load(open(ma_path, "r", encoding="utf-8"))
 
     if link_m is None:
         print("Counting link(m)...")
@@ -172,7 +180,7 @@ def filter_mention_anchors_by_len_and_prob(
     if freq_m is None:
         freq_m_path = os.path.join(data_path, "freq_m.json")
         print("\nLoading freq(m) from file: {}".format(freq_m_path))
-        freq_m      = json.load(open(freq_m_path, "r"))
+        freq_m      = json.load(open(freq_m_path, "r", encoding="utf-8"))
 
     print("\nFiltering mention anchors, link_prob threshold: {}".format(link_prob_th))
     ma = extract_mention_anchors.filter_mention_anchors(mention_anchors, link_m, freq_m, link_prob_th)
@@ -189,9 +197,12 @@ def generate_mention_anchors_trie(data_path) -> None:
     start_at = int(time.time())
     print("Generating mention_anchors.txt for building trie tree.\n\tdata_from: {}\n\tsaved_to: {}".format(
         mention_anchors_json_path, mention_anchors_txt_path))
-    mention_anchors = json.load(open(mention_anchors_json_path, "r"))
+    mention_anchors = json.load(open(mention_anchors_json_path, "r", encoding="utf-8"))
     generate_trie_dict.generate_mention_anchors_txt_for_trie(mention_anchors, mention_anchors_txt_path)
     print("Generated. Time: {}".format(str(datetime.timedelta(seconds=int(time.time())-start_at))))
+
+    if (os.path.exists(os.path.join(data_path, "mention_anchors.trie"))):
+        os.remove(os.path.join(data_path, "mention_anchors.trie"))
 
 def generate_vocab_word_for_trie(data_path):
     import os, imp
@@ -210,8 +221,8 @@ def generate_input_for_tries(data_path) -> None:
 
     mention_anchors_json_path = os.path.join(data_path, "mention_anchors.json")
     title_entities_json_path  = os.path.join(data_path, "title_entities.json")
-    mention_anchors = json.load(open(mention_anchors_json_path, "r"))
-    title_entities  = json.load(open(title_entities_json_path, "r"))
+    mention_anchors = json.load(open(mention_anchors_json_path, "r", encoding="utf-8"))
+    title_entities  = json.load(open(title_entities_json_path, "r", encoding="utf-8"))
 
     mention_anchors_txt_path = os.path.join(data_path, "mention_anchors.txt")
     title_entities_txt_path  = os.path.join(data_path, "title_entities.txt")
@@ -224,7 +235,7 @@ def generate_emb_train_kg(data_path) -> None:
     from datatool.pipeline import extract_embedding_train
 
     train_kg_path = os.path.join(data_path, "emb/train_kg")
-    out_links = json.load(open(os.path.join(data_path, "out_links.json"), "r"))
+    out_links = json.load(open(os.path.join(data_path, "out_links.json"), "r", encoding="utf-8"))
     extract_embedding_train.generate_train_kg_from_out_links(out_links, train_kg_path)
 
 def generate_emb_train_text(source, data_path, corpus_name) -> None:
@@ -263,7 +274,7 @@ def generate_prob_files(data_path) -> None:
     from datatool.pipeline import generate_prob_files
 
     start_at = int(time.time())
-    mention_anchors = json.load(open(os.path.join(data_path, "mention_anchors.json")))
+    mention_anchors = json.load(open(os.path.join(data_path, "mention_anchors.json"), encoding="utf-8"))
     entity_prior, m_given_e, e_given_m, mention_link = generate_prob_files.cal_4_prob_from_mention_anchors(
         mention_anchors)
 
@@ -272,13 +283,13 @@ def generate_prob_files(data_path) -> None:
     generate_prob_files.generate_entity_prior_file(entity_prior, entity_prior_path, entity_prior_json_path)
 
     link_prob_path = os.path.join(data_path, "link_prob.dat")
-    freq_m         = json.load(open(os.path.join(data_path, "freq_m.json")))
+    freq_m         = json.load(open(os.path.join(data_path, "freq_m.json"), encoding="utf-8"))
     generate_prob_files.generate_link_prob_file(e_given_m, mention_link, freq_m, link_prob_path)
 
     link_prob_json_path = os.path.join(data_path, "link_prob.json")
     link_prob = dict()
     for m in e_given_m: link_prob[m] = float(mention_link[m])/freq_m[m]
-    json.dump(link_prob, open(link_prob_json_path, "w"))
+    json.dump(link_prob, open(link_prob_json_path, "w", encoding="utf-8"))
 
     prob_mention_entity_path = os.path.join(data_path, "prob_mention_entity.dat")
     prob_mention_entity_json_path = os.path.join(data_path, "prob_mention_entity.json")
@@ -297,57 +308,84 @@ def filter_title_entities(source, data_path):
     if source == 'bd': EManager = EntityManager.BaiduEntityManager
     if source == 'wiki': EManager = EntityManager.WikiEntityManager
 
-    entity_manager = EManager(data_path + "entity_id.txt", data_path + "emb/result300/vectors_entity")
-    title_entities = json.load(open(os.path.join(data_path, "title_entities.json"), "r"))
+    entity_manager = EManager(data_path + "bd_instance_ID.txt", data_path + "emb/result300/vectors_entity")
+    title_entities = json.load(open(os.path.join(data_path, "title_entities.json"), "r", encoding="utf-8"))
     refined_tt = dict()
     for title in title_entities:
         if entity_manager.is_entity_has_embed(title_entities[title]):
             refined_tt[title] = title_entities[title]
-    json.dump(refined_tt, open(os.path.join(data_path, "title_entities.json"), "w"))
+    json.dump(refined_tt, open(os.path.join(data_path, "title_entities.json"), "w", encoding="utf-8"))
     return refined_tt
+
+
+def train_embeddings(data_path, corpus_list, merge=True, train=True, move=True):
+    train_text_paths = [os.path.join(data_path, "emb/train_text_{}.txt".format(corpus_name)) for corpus_name in corpus_list]
+    merge_command = 'cat ' + ' '.join(train_text_paths) + ' > ' + os.path.join(data_path, "emb/train_text")
+    if (merge):
+        print('Executing: ' + merge_command)
+        subprocess.call(merge_command, shell=True)
+    train_command = ['bash', './TrainJointModel/src/xlink-align.sh']
+    if (train):
+        print('Executing: ' + ' '.join(train_command))
+        subprocess.call(train_command)
+
+    if (move):
+        mv_command1 = ['cp', '/mnt/sdd/zfw/xlink2020/bd/emb/result300/vectors_entity10.dat', '/mnt/sdd/zfw/xlink2020/bd/emb/result300/vectors_entity']
+        subprocess.call(mv_command1)
+        mv_command2 = ['cp', '/mnt/sdd/zfw/xlink2020/bd/emb/result300/vectors_word10.dat', '/mnt/sdd/zfw/xlink2020/bd/emb/result300/vectors_word']
+        subprocess.call(mv_command2)
 
 
 if __name__ == "__main__":
     source, corpus_name = "bd", "abstract"
-    data_path       = "/mnt/sdd/zxr/xlink/{}/".format(source)
+    # data_path       = "/mnt/sdd/zxr/xlink/{}/".format(source)
+    data_path = '/mnt/sdd/zfw/xlink2020/%s/' %(source)
+    corpus_list = ["abstract", "article", "infobox"]
 
+    '''
     # 第一步
     # 1.1 生成标准输入: standard_entity_id.txt   standard_corpus.txt
-    ttl_path                = data_path + "entity_id.ttl"
-    standard_entity_id_path = data_path + "entity_id.txt"
-    old_entity_path         = data_path + "old_entity_id.txt"
-    generate_standard_entity_dict(source, old_entity_path, ttl_path, standard_entity_id_path)
-    generate_standard_corpus(source, data_path, corpus_name)
-
+    # ttl_path                = data_path + "entity_id.ttl"
+    # standard_entity_id_path = data_path + "entity_id.txt"
+    # old_entity_path         = data_path + "old_entity_id.txt"
+    # generate_standard_entity_dict(source, old_entity_path, ttl_path, standard_entity_id_path)
+    # corpus_list = ["abstract", "article", "infobox"]
+    for c in corpus_list:
+        generate_standard_corpus(source, data_path, c)
 
     # 第二步
     # 2.1 抽取 mention_anchors 和 out_links
-    _m, _o = generate_mention_anchors_and_out_links(data_path, corpus_name)
-    corpus_list = ["abstract", "article", "infobox"]
+    # _m, _o = generate_mention_anchors_and_out_links(data_path, corpus_name)
+    for c in corpus_list:
+        _m, _o = generate_mention_anchors_and_out_links(data_path, c)
     _, __ = merge_multiple_mention_anchors(data_path, corpus_list, is_save=True)
+    '''
 
     # 2.2 由 standard_corpus 生成 train_text
-    generate_emb_train_text(source, data_path, corpus_name) # 中文 30h，英文很快
-
+    for c in corpus_list:
+        generate_emb_train_text(source, data_path, c) # 中文 30h，英文很快
+    
     # 第三步
     # 3.1 生成 mention_anchors.trie 来计算 freq(m)
     generate_mention_anchors_trie(data_path)
 
     # 3.2 从 out_links 生成 train_kg
     generate_emb_train_kg(data_path)
-
+    
     # 第四步
     # 4.1 全文统计 freq(m)
-    JDClass = init_JVM()
-    _fm = calculate_freq_m(data_path, corpus_name, JDClass) # 中文 13h, 英文 58h
+    for c in corpus_list: 
+        JDClass = init_JVM()
+        _fm = calculate_freq_m(data_path, c, JDClass) # 中文 13h, 英文 58h
+
+    # known bug: JVM cannot be restarted after shutdown
     shutdownJVM()
-
-    corpus_list = ["abstract", "article", "infobox"]
-    freq_m = merge_freq_m(data_path, corpus_list)
-
+    
+    freq_m = merge_freq_m(data_path, corpus_list, is_save=True)
+    
     # 4.2
     # TrainJointModel 训练 Embedding.
-
+    train_embeddings(data_path, corpus_list, merge=True, train=True)
 
     # 第五步
     # 5.1 根据 freq(m) refine mention_anchors.
@@ -370,6 +408,7 @@ if __name__ == "__main__":
     #       - mention_anchors.txt
     #       - title_entities.txt
     generate_input_for_tries(data_path)
+    
 
     # 7.2 & 8 生成三个概率文件
     #     - baidu_entity_prior.dat        entity::;prior

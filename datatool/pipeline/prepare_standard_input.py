@@ -1,6 +1,7 @@
 import datetime
 import time
 import urllib
+import urllib.parse
 import traceback
 
 import utils.entity
@@ -97,6 +98,7 @@ def is_corpus_line_valid(source, line):
 def infobox_pre_refine(source, corpus_path, new_corpus_path):
     start_at = int(time.time())
     print("Pre-refining infobox raw corpus: {}".format(corpus_path))
+    prefix = 'https://baike.baidu.com/item/'
     import json
     from config import Config
     with open(corpus_path, "r", encoding="utf-8") as rf:
@@ -106,6 +108,11 @@ def infobox_pre_refine(source, corpus_path, new_corpus_path):
                     if source not in Config.get_sources(): break
                     if source == 'bd':
                         title, sub_title, url, info = line.split("\t\t")
+                        
+                        # strip fromtitle
+                        # url = prefix+url[len(prefix):].split('/')[0]
+                        url = prefix+url[len(prefix):].split('?')[0]
+
                         info = json.JSONDecoder().decode(info.strip())
                         new_info = ""
 
@@ -148,12 +155,17 @@ def corpus_refine(source, corpus_path, refined_path):
 
     start = int(time.time())
     last_update = start
+    prefix = 'https://baike.baidu.com/item/'
     print("\nRefining raw corpus: {}".format(corpus_path))
     with open(corpus_path, "r", encoding='utf-8') as rf:
         with open(refined_path, 'w', encoding='utf-8') as wf:
             for line in rf:
+
+                '''
                 if source == 'bd':
                     line = ''.join(line.split(" "))
+                '''
+                
                 total += 1
                 curr_update = int(time.time())
                 # noinspection PyBroadException
@@ -177,7 +189,11 @@ def corpus_refine(source, corpus_path, refined_path):
                         full_title = title
                         if len(sub_title) > 1: full_title += sub_title
 
-                        url = line_arr[2][23:]
+                        # url = line_arr[2][23:]
+                        # strip fromtitle
+                        # url = prefix+line_arr[2][len(prefix):].split('/')[0]
+                        url = prefix+line_arr[2][len(prefix):].split('?')[0]
+
                         if entity_dict.get_entity_by_uri(url) is not None \
                                 and line_arr[3].split('::;', 1)[1].strip() != "":
                             wf.write("{}\t\t{}\n".format(
@@ -225,6 +241,8 @@ def refine_annotation_by_split(source, annotated_text):
     plain_text += split_segs[0]
     refined_annotated_text += split_segs[0]
 
+    prefix = 'https://baike.baidu.com/item/'
+
     # "a" "a|b]]s" "d]]v"
     for seg_index in range(1, len(split_segs)):
         seg = split_segs[seg_index]
@@ -251,7 +269,11 @@ def refine_annotation_by_split(source, annotated_text):
                 else: instance_id = entity.get_id()
             else:
                 mention = split_annotation[0]
-                url = urllib.parse.unquote(split_annotation[1]).split("?")[0]
+                # url = urllib.parse.unquote(split_annotation[1]).split("?")[0]
+                # strip fromtitle
+                # url = prefix+split_annotation[1][len(prefix):].split('/')[0]
+                url = prefix+split_annotation[1][len(prefix):].split('?')[0]
+
                 entity = entity_dict.get_entity_by_uri(url) # type: utils.dictionary.Entity
                 if entity is None: is_plain = True
                 else: instance_id = entity.get_id()
