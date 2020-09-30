@@ -319,6 +319,8 @@ def filter_title_entities(source, data_path):
 
 
 def train_embeddings(data_path, corpus_list, merge=True, train=True, move=True):
+    from datatool.pipeline import calculate_entity_embedding
+
     train_text_paths = [os.path.join(data_path, "emb/train_text_{}.txt".format(corpus_name)) for corpus_name in corpus_list]
     merge_command = 'cat ' + ' '.join(train_text_paths) + ' > ' + os.path.join(data_path, "emb/train_text")
     if (merge):
@@ -335,13 +337,16 @@ def train_embeddings(data_path, corpus_list, merge=True, train=True, move=True):
         mv_command2 = ['cp', '/mnt/sdd/zfw/xlink2020/bd/emb/result300/vectors_word10.dat', '/mnt/sdd/zfw/xlink2020/bd/emb/result300/vectors_word']
         subprocess.call(mv_command2)
 
+    calculate_entity_embedding.calculate_embedding_with_abstract(corpus_path='/mnt/sdd/zfw/xlink2020/bd/standard_abstract.txt',
+                                                                 vector_path='/mnt/sdd/zfw/xlink2020/bd/emb/result300/vectors_word',
+                                                                 out_path='/mnt/sdd/zfw/xlink2020/bd/emb/result300/vectors_abstract')
+
 
 if __name__ == "__main__":
     source, corpus_name = "bd", "abstract"
     # data_path       = "/mnt/sdd/zxr/xlink/{}/".format(source)
     data_path = '/mnt/sdd/zfw/xlink2020/%s/' %(source)
     corpus_list = ["abstract", "article", "infobox"]
-
     '''
     # 第一步
     # 1.1 生成标准输入: standard_entity_id.txt   standard_corpus.txt
@@ -359,7 +364,6 @@ if __name__ == "__main__":
     for c in corpus_list:
         _m, _o = generate_mention_anchors_and_out_links(data_path, c)
     _, __ = merge_multiple_mention_anchors(data_path, corpus_list, is_save=True)
-    '''
 
     # 2.2 由 standard_corpus 生成 train_text
     for c in corpus_list:
@@ -371,7 +375,7 @@ if __name__ == "__main__":
 
     # 3.2 从 out_links 生成 train_kg
     generate_emb_train_kg(data_path)
-    
+
     # 第四步
     # 4.1 全文统计 freq(m)
     for c in corpus_list: 
@@ -380,13 +384,15 @@ if __name__ == "__main__":
 
     # known bug: JVM cannot be restarted after shutdown
     shutdownJVM()
-    
+    '''
     freq_m = merge_freq_m(data_path, corpus_list, is_save=True)
     
+    '''
     # 4.2
     # TrainJointModel 训练 Embedding.
     train_embeddings(data_path, corpus_list, merge=True, train=True)
-
+    '''
+    
     # 第五步
     # 5.1 根据 freq(m) refine mention_anchors.
     mention_anchors = refine_mention_anchors_by_freq_m(data_path, freq_m)
@@ -396,7 +402,7 @@ if __name__ == "__main__":
     mention_anchors = filter_mention_anchors_by_len_and_prob(data_path, 0.0001, ma, None, freq_m)
     # 5.3 从训练得到的词表 vocab_word 得到 vocab_word.trie
     generate_vocab_word_for_trie(data_path)
-
+    
 
     # 第六步
     # 6.1 重新 expand mention anchors 得到没有统计值的 title_entities
