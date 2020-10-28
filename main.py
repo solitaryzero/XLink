@@ -1,4 +1,4 @@
-from jpype import *
+# from jpype import *
 import subprocess
 import os
 
@@ -9,7 +9,7 @@ def generate_standard_entity_dict(source, old_entity_path, entity_ttl_path, stan
     standard_id2title = prep_input.get_id2title_from_ttl(source, entity_ttl_path)
     prep_input.generate_standard_entity_id(standard_entity_path, old_entity_holder, standard_id2title)
 
-def generate_standard_corpus(source, data_path, corpus_name) -> None:
+def generate_standard_corpus(source, data_path, corpus_name, mark_titles=False) -> None:
     import os, imp
     raw_corpus_path = os.path.join(data_path, "bd_{}.txt".format(corpus_name))
     refined_corpus_path = os.path.join(data_path, "refined_{}.txt".format(corpus_name))
@@ -20,10 +20,12 @@ def generate_standard_corpus(source, data_path, corpus_name) -> None:
     if corpus_name == "infobox":
         prep_input.infobox_pre_refine(source, raw_corpus_path,
             os.path.join(data_path, "pre_raw_{}.txt".format(corpus_name)))
-        prep_input.corpus_refine(source, os.path.join(data_path, "pre_raw_{}.txt".format(corpus_name)), refined_corpus_path)
+        # prep_input.corpus_refine(source, os.path.join(data_path, "pre_raw_{}.txt".format(corpus_name)), refined_corpus_path)
+        prep_input.corpus_full_refine(source, os.path.join(data_path, "pre_raw_{}.txt".format(corpus_name)), standard_corpus_path, mark_titles)
     else:    
-        prep_input.corpus_refine(source, raw_corpus_path, refined_corpus_path)
-    prep_input.corpus_annotation_refine(source, refined_corpus_path, standard_corpus_path)
+        # prep_input.corpus_refine(source, raw_corpus_path, refined_corpus_path)
+        prep_input.corpus_full_refine(source, raw_corpus_path, standard_corpus_path, mark_titles)
+    # prep_input.corpus_annotation_refine(source, refined_corpus_path, standard_corpus_path)
 
 def statistics_about_mention_anchors_and_out_links(mention_anchors: dict, out_links: dict) -> None:
     from datatool.pipeline import tools
@@ -116,19 +118,21 @@ def init_JVM():
     JDClass = JClass("edu.TextParser")
     return JDClass
 
-def calculate_freq_m(data_path, corpus_name, JDClass) -> dict:
+# def calculate_freq_m(data_path, corpus_name, JDClass) -> dict:
+def calculate_freq_m(data_path, corpus_name) -> dict:
     import os, json
     from datatool.pipeline import generate_prob_files
 
     standard_corpus_path = os.path.join(data_path, "standard_{}.txt".format(corpus_name))
     mention_anchors_txt_path = os.path.join(data_path, "mention_anchors.txt")
-    mention_anchors_trie_path = os.path.join(data_path, "mention_anchors.trie")
+    # mention_anchors_trie_path = os.path.join(data_path, "mention_anchors.trie")
 
-    if (os.path.exists(mention_anchors_trie_path)):
-        os.remove(mention_anchors_trie_path)
+    # if (os.path.exists(mention_anchors_trie_path)):
+    #     os.remove(mention_anchors_trie_path)
 
-    freq_m = generate_prob_files.cal_freq_m(standard_corpus_path, mention_anchors_txt_path, mention_anchors_trie_path,
-                                            JDClass)
+    # freq_m = generate_prob_files.cal_freq_m(standard_corpus_path, mention_anchors_txt_path, mention_anchors_trie_path,
+    #                                         JDClass)
+    freq_m = generate_prob_files.cal_freq_m(standard_corpus_path, mention_anchors_txt_path)
     json.dump(freq_m, open(os.path.join(data_path, "freq_m_{}.json".format(corpus_name)), "w", encoding="utf-8"))
     return freq_m
 
@@ -332,22 +336,37 @@ def train_embeddings(data_path, corpus_list, merge=True, train=True, move=True):
         subprocess.call(train_command)
 
     if (move):
-        mv_command1 = ['cp', '/mnt/sdd/zfw/xlink2020/bd/emb/result300/vectors_entity10.dat', '/mnt/sdd/zfw/xlink2020/bd/emb/result300/vectors_entity']
+        mv_command1 = ['cp', '%s/emb/result300/vectors_entity10.dat' %data_path, '%s/emb/result300/vectors_entity' %data_path]
         subprocess.call(mv_command1)
-        mv_command2 = ['cp', '/mnt/sdd/zfw/xlink2020/bd/emb/result300/vectors_word10.dat', '/mnt/sdd/zfw/xlink2020/bd/emb/result300/vectors_word']
+        mv_command2 = ['cp', '%s/emb/result300/vectors_word10.dat' %data_path, '%s/emb/result300/vectors_word' %data_path]
         subprocess.call(mv_command2)
 
-    calculate_entity_embedding.calculate_embedding_with_abstract(corpus_path='/mnt/sdd/zfw/xlink2020/bd/standard_abstract.txt',
-                                                                 vector_path='/mnt/sdd/zfw/xlink2020/bd/emb/result300/vectors_word',
-                                                                 out_path='/mnt/sdd/zfw/xlink2020/bd/emb/result300/vectors_abstract')
+    calculate_entity_embedding.calculate_embedding_with_abstract(corpus_path='%s/standard_abstract.txt' %data_path,
+                                                                 vector_path='%s/emb/result300/vectors_word' %data_path,
+                                                                 out_path='%s/emb/result300/vectors_abstract' %data_path)
+
+
+def generate_tries(data_path):
+    from datatool.pipeline import generate_tries
+    title_entity_txt_path = os.path.join(data_path, "title_entities.txt")
+    title_entity_trie_path = os.path.join(data_path, "title_entities.pytrie")
+    generate_tries.build_trie(title_entity_txt_path, title_entity_trie_path)
+
+    mention_txt_path = os.path.join(data_path, "mention_anchors.txt")
+    mention_trie_path = os.path.join(data_path, "mention_anchors.pytrie")
+    generate_tries.build_trie(mention_txt_path, mention_trie_path)
+
+    vocab_txt_path = os.path.join(data_path, "vocab_word.txt")
+    vocab_trie_path = os.path.join(data_path, "vocab_word.pytrie")
+    generate_tries.build_trie(vocab_txt_path, vocab_trie_path)
 
 
 if __name__ == "__main__":
     source, corpus_name = "bd", "abstract"
     # data_path       = "/mnt/sdd/zxr/xlink/{}/".format(source)
-    data_path = '/mnt/sdd/zfw/xlink2020/%s/' %(source)
+    data_path = '/data/zfw/xlink/%s/' %(source)
     corpus_list = ["abstract", "article", "infobox"]
-    '''
+    
     # 第一步
     # 1.1 生成标准输入: standard_entity_id.txt   standard_corpus.txt
     # ttl_path                = data_path + "entity_id.ttl"
@@ -356,7 +375,7 @@ if __name__ == "__main__":
     # generate_standard_entity_dict(source, old_entity_path, ttl_path, standard_entity_id_path)
     # corpus_list = ["abstract", "article", "infobox"]
     for c in corpus_list:
-        generate_standard_corpus(source, data_path, c)
+        generate_standard_corpus(source, data_path, c, True)
 
     # 第二步
     # 2.1 抽取 mention_anchors 和 out_links
@@ -379,19 +398,19 @@ if __name__ == "__main__":
     # 第四步
     # 4.1 全文统计 freq(m)
     for c in corpus_list: 
-        JDClass = init_JVM()
-        _fm = calculate_freq_m(data_path, c, JDClass) # 中文 13h, 英文 58h
+        # JDClass = init_JVM()
+        # _fm = calculate_freq_m(data_path, c, JDClass) # 中文 13h, 英文 58h
+        _fm = calculate_freq_m(data_path, c)
 
     # known bug: JVM cannot be restarted after shutdown
-    shutdownJVM()
-    '''
+    # shutdownJVM()
+    
     freq_m = merge_freq_m(data_path, corpus_list, is_save=True)
     
-    '''
     # 4.2
     # TrainJointModel 训练 Embedding.
     train_embeddings(data_path, corpus_list, merge=True, train=True)
-    '''
+    # train_embeddings(data_path, corpus_list, merge=False, train=False)
     
     # 第五步
     # 5.1 根据 freq(m) refine mention_anchors.
@@ -421,3 +440,6 @@ if __name__ == "__main__":
     #     - prob_mention_entity.dat       entity::;mention::;prob
     #     - link_prob.dat                 mention::;entity_id::;link(a)::;freq(a)::;link_prob::;p(e|m)
     generate_prob_files(data_path)
+
+    # 9 生成各个字典树
+    generate_tries(data_path)

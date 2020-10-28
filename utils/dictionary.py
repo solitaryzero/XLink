@@ -108,6 +108,13 @@ class EntityDictionary:
         else:
             return res
 
+    def get_entity_by_uri_and_title(self, uri, title) -> object:
+        res = self.get_entity_by_uri(uri)
+        if (res is None):
+            return self.get_entity_by_full_title(title)
+        else:
+            return res
+
     @staticmethod
     def get_mention_from_title(title: str) -> str:
         mention = ""

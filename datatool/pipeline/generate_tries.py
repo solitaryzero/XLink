@@ -26,13 +26,13 @@ if __name__ == "__main__":
     data_path = '/mnt/sdd/zfw/xlink2020/%s/' %(source)
 
     title_entity_txt_path = os.path.join(data_path, "title_entities.txt")
-    title_entity_trie_path = os.path.join(data_path, "title_entities.trie")
+    title_entity_trie_path = os.path.join(data_path, "title_entities.pytrie")
     build_trie(title_entity_txt_path, title_entity_trie_path)
 
     mention_txt_path = os.path.join(data_path, "mention_anchors.txt")
-    mention_trie_path = os.path.join(data_path, "mention_anchors.trie")
+    mention_trie_path = os.path.join(data_path, "mention_anchors.pytrie")
     build_trie(mention_txt_path, mention_trie_path)
 
     vocab_txt_path = os.path.join(data_path, "vocab_word.txt")
-    vocab_trie_path = os.path.join(data_path, "vocab_word.trie")
+    vocab_trie_path = os.path.join(data_path, "vocab_word.pytrie")
     build_trie(vocab_txt_path, vocab_trie_path)

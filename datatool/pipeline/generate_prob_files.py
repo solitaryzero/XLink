@@ -2,7 +2,8 @@ import traceback
 import json
 import time
 import datetime
-from jpype import *
+# from jpype import *
+import ahocorasick
 from datatool.pipeline.extract_mention_anchors import extract_mention_and_plain_text_from_annotated_doc
 
 class Parser:
@@ -13,15 +14,53 @@ class Parser:
         raise SyntaxError('class IndexBuilder should be initialized by get_instance(mention_anchor_path, trie_tree_path)')
 
     @classmethod
-    def get_instance(cls, mention_anchor_path, trie_tree_path, JDClass: JClass):
+    # def get_instance(cls, mention_anchor_path, trie_tree_path, JDClass: JClass):
+    def get_instance(cls, mention_anchor_path):
         if cls._instance is None:
             cls._instance = object.__new__(Parser)
-            cls._instance.init(mention_anchor_path, trie_tree_path, JDClass)
+            # cls._instance.init(mention_anchor_path, trie_tree_path, JDClass)
+            cls._instance.init(mention_anchor_path)
 
         return cls._instance
 
-    def init(self, mention_anchor_path, trie_tree_path, JDClass: JClass):
-        self.index_builder = JDClass(mention_anchor_path, trie_tree_path)
+    # def init(self, mention_anchor_path, trie_tree_path, JDClass: JClass):
+    #     self.index_builder = JDClass(mention_anchor_path, trie_tree_path)
+
+    def init(self, mention_anchor_path):
+        A = ahocorasick.Automaton(ahocorasick.STORE_ANY, ahocorasick.KEY_STRING)
+        with open(mention_anchor_path, 'r', encoding='utf-8') as fin:
+            for line in fin:
+                words = line.strip().split('::=')
+                mention = words[0]
+                A.add_word(mention, words)
+        
+        A.make_automaton()
+        self.index_builder = A
+    
+
+    # def parse_text(self, doc):
+    #     """
+    #     从 plain_text 中 parse 到可能的所有 mention
+    #     :param text:
+    #     :return:
+    #     """
+    #     parsed_res_text = self.index_builder.parseText(doc)
+    #     text = parsed_res_text[1:-1]
+    #     result = []
+    #     if text != "":
+    #         items = text.split(",")
+    #         for item in items:
+    #             item = item.strip()
+    #             mention_indices, candidates = item.split("=", 1)
+    #             start, end = mention_indices[1:-1].split(":")
+    #             start = int(start)
+    #             end = int(end)
+    #             result.append({
+    #                 "start": start,
+    #                 "end": end,
+    #                 "label": doc[start: end],
+    #                 "candidates": candidates.split("::=")})
+    #     return result
 
     def parse_text(self, doc):
         """
@@ -29,24 +68,18 @@ class Parser:
         :param text:
         :return:
         """
-        parsed_res_text = self.index_builder.parseText(doc)
-        text = parsed_res_text[1:-1]
-        result = []
-        if text != "":
-            items = text.split(",")
-            for item in items:
-                item = item.strip()
-                mention_indices, candidates = item.split("=", 1)
-                start, end = mention_indices[1:-1].split(":")
-                start = int(start)
-                end = int(end)
-                result.append({
-                    "start": start,
-                    "end": end,
-                    "label": doc[start: end],
-                    "candidates": candidates.split("::=")})
-        return result
 
+        result = []
+        for end_index, eids in self.index_builder.iter(doc):
+            original_value = eids[0]
+            entity_id = eids[1:]
+            start_index = end_index - len(original_value) + 1
+            result.append({
+                    "start": start_index,
+                    "end": end_index+1,
+                    "label": original_value,
+                    "candidates": entity_id})
+        return result
 
 def cal_4_prob_from_mention_anchors(mention_anchors):
     """
@@ -127,8 +160,10 @@ startJVM(getDefaultJVMPath(), "-Djava.class.path=%s" % jar_path)
 JDClass = JClass("edu.TextParser")
 shutdownJVM()
 """
-def cal_freq_m(corpus_path, mention_anchor_path, trie_tree_path, JDClass: JClass):
-    parser = Parser.get_instance(mention_anchor_path, trie_tree_path, JDClass)
+# def cal_freq_m(corpus_path, mention_anchor_path, trie_tree_path, JDClass: JClass):
+def cal_freq_m(corpus_path, mention_anchor_path):
+    # parser = Parser.get_instance(mention_anchor_path, trie_tree_path, JDClass)
+    parser = Parser.get_instance(mention_anchor_path)
 
     counter, mode_cnt = 0, 100000
     start_time = int(time.time())

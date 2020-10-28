@@ -3,6 +3,7 @@ import time
 import urllib
 import urllib.parse
 import traceback
+import re
 
 import utils.entity
 import utils.dictionary
@@ -194,16 +195,25 @@ def corpus_refine(source, corpus_path, refined_path):
                         # url = prefix+line_arr[2][len(prefix):].split('/')[0]
                         url = prefix+line_arr[2][len(prefix):].split('?')[0]
 
-                        if entity_dict.get_entity_by_uri(url) is not None \
-                                and line_arr[3].split('::;', 1)[1].strip() != "":
-                            wf.write("{}\t\t{}\n".format(
-                                entity_dict.get_entity_by_uri(url).get_id(),
-                                line_arr[3].split('::;', 1)[1]))
-                        elif entity_dict.get_entity_by_full_title(full_title) is not None \
-                                and line_arr[3].split('::;', 1)[1].strip() != "":
-                            wf.write("{}\t\t{}\n".format(
-                                entity_dict.get_entity_by_full_title(full_title).get_id(),
-                                line_arr[3].split('::;', 1)[1]))
+                        # if entity_dict.get_entity_by_uri(url) is not None \
+                        #         and line_arr[3].split('::;', 1)[1].strip() != "":
+                        #     wf.write("{}\t\t{}\n".format(
+                        #         entity_dict.get_entity_by_uri(url).get_id(),
+                        #         line_arr[3].split('::;', 1)[1]))
+                        # elif entity_dict.get_entity_by_full_title(full_title) is not None \
+                        #         and line_arr[3].split('::;', 1)[1].strip() != "":
+                        #     wf.write("{}\t\t{}\n".format(
+                        #         entity_dict.get_entity_by_full_title(full_title).get_id(),
+                        #         line_arr[3].split('::;', 1)[1]))
+
+                        eid = entity_dict.get_entity_by_uri(url)
+                        if (eid is None):
+                            eid = entity_dict.get_entity_by_full_title(full_title)
+
+                        content = line_arr[3].split('::;', 1)[1].strip()
+                        if not(eid is None) and (content != ""):
+                            wf.write("%s\t\t%s\n" %(eid, content))
+                            
 
                     if source == 'wiki':
                         full_title = line_arr[0].strip()
@@ -316,3 +326,170 @@ def corpus_annotation_refine(source, refined_path, annotation_refined_path):
                     print("Unexpected line: %d" % line_no)
     print("Total processed: {}, time consume: {}, refined file is saved to:\n\t{}".format(
         line_no, str(datetime.timedelta(seconds=int(time.time())-start_at)), annotation_refined_path))
+
+
+def corpus_full_refine(source, corpus_path, refined_path, mark_titles):
+    """
+    提取 corpus_path 中所有的有效数据, 并将其保存到 refined_path 中
+
+    有效数据是指:
+        1. 有 abstract/article
+        2. abstract/article 的标注合法 (对于中文数据的处理要先把所有的空格去掉)
+        3. 有对应的合法 instance id
+
+    :param source: bd|wiki
+    :param corpus_path: "./data/bd/raw_abstract.txt"
+    :param refined_path: "./data/bd/standard_abstract.txt"
+    :return: total, error_no
+    """
+
+    total = 0
+    error_no = 0
+    entity_dict = EntityDictionary.get_instance(source)
+
+    start = int(time.time())
+    last_update = start
+    prefix = 'https://baike.baidu.com/item/'
+    print("\nRefining raw corpus: {}".format(corpus_path))
+
+    def add_mention(s, eid, source='bd'):
+        return '[[%s|%s]]' %(eid, s.group())
+
+    with open(corpus_path, "r", encoding='utf-8') as rf:
+        with open(refined_path, 'w', encoding='utf-8') as wf:
+            for line in rf:
+                total += 1
+                curr_update = int(time.time())
+                # noinspection PyBroadException
+                try:
+                    if total % 1000000 == 0:
+                        print("\t#{}, batch_time: {}, total_time: {}".format(
+                            total,
+                            str(datetime.timedelta(seconds=curr_update-last_update)),
+                            str(datetime.timedelta(seconds=curr_update-start))
+                        ))
+                        last_update = curr_update
+
+                    if not is_corpus_line_valid(source, line):
+                        continue
+
+                    line_arr = line.strip().split("\t\t")
+
+                    if source == 'bd':
+                        title = line_arr[0].strip()
+                        sub_title = line_arr[1].strip()
+
+                        full_title = title
+                        if len(sub_title) > 1: 
+                            full_title += sub_title
+
+                        # strip fromtitle
+                        url = prefix+line_arr[2][len(prefix):].split('?')[0]
+
+                        eid = entity_dict.get_entity_by_uri_and_title(url, full_title)
+                        if (eid is None):
+                            error_no += 1
+                            continue
+                        eid = eid.get_id()
+
+                        content = line_arr[3].split('::;', 1)[1].strip()
+                        refined_annotated_text = ""
+                        split_segs = content.split("[[")
+                        
+                        if (mark_titles):
+                            marked_text = re.sub(re.escape(title), lambda s: add_mention(s, eid), split_segs[0])
+                            refined_annotated_text += marked_text
+                        else:
+                            refined_annotated_text += split_segs[0]
+
+                        for seg_index in range(1, len(split_segs)):
+                            seg = split_segs[seg_index]
+                            seg_segs = seg.split("]]")
+                            annotated_item = seg_segs[0]
+                            split_annotation = annotated_item.split("|")
+
+                            is_plain, mention, instance_id = False, "", None
+                            if len(split_annotation) == 1:
+                                mention = annotated_item
+                                is_plain = True
+                            else:
+                                mention = split_annotation[0]
+                                # url = urllib.parse.unquote(split_annotation[1]).split("?")[0]
+                                # strip fromtitle
+                                # url = prefix+split_annotation[1][len(prefix):].split('/')[0]
+                                url = prefix+split_annotation[1][len(prefix):].split('?')[0]
+
+                                entity = entity_dict.get_entity_by_uri_and_title(url, mention) # type: utils.dictionary.Entity
+                                if entity is None: 
+                                    is_plain = True
+                                else: 
+                                    instance_id = entity.get_id()
+
+                            if is_plain:
+                                refined_annotated_text += mention
+                            else:
+                                refined_annotated_text += "[[{}|{}]]".format(instance_id, mention)
+                            
+                            if len(seg_segs) > 1:
+                                if (mark_titles):
+                                    marked_text = re.sub(re.escape(title), lambda s: add_mention(s, eid), seg_segs[1])
+                                    refined_annotated_text += marked_text
+                                else:
+                                    refined_annotated_text += seg_segs[1]
+
+                        if (refined_annotated_text != ""):
+                            wf.write("%s\t\t%s\n" %(eid, refined_annotated_text))
+                            
+
+                    if source == 'wiki':
+                        full_title = line_arr[0].strip()
+                        eid = entity_dict.get_entity_by_full_title(full_title)
+                        if (eid is None):
+                            error_no += 1
+                            continue
+                        eid = eid.get_id()
+                        content = line_arr[2].split('::;', 1)[1].strip()
+
+                        split_segs = content.split("[[")
+                        for seg_index in range(1, len(split_segs)):
+                            seg = split_segs[seg_index]
+                            seg_segs = seg.split("]]")
+                            annotated_item = seg_segs[0]
+                            split_annotation = annotated_item.split("|")
+
+                            is_plain, mention, instance_id = False, "", None
+                            if len(split_annotation) == 1:
+                                mention = annotated_item
+                                instance_ids = entity_dict.mention2entities.get(mention)
+                                if instance_ids is None or len(instance_ids)>1: 
+                                    is_plain = True
+                                else:
+                                    instance_id = list(instance_ids.keys())[0]
+                            else:
+                                title = split_annotation[0]
+                                mention = split_annotation[1]
+
+                                entity = entity_dict.get_entity_by_full_title(title)
+                                if entity is None: 
+                                    is_plain = True
+                                else: 
+                                    instance_id = entity.get_id()
+                            
+                            if is_plain:
+                                refined_annotated_text += mention
+                            else:
+                                refined_annotated_text += "[[{}|{}]]".format(instance_id, mention)
+
+                            if len(seg_segs) > 1:
+                                refined_annotated_text += seg_segs[1]
+
+                        if (refined_annotated_text != ""):
+                            wf.write("%s\t\t%s\n" %(eid, refined_annotated_text))
+                except Exception:
+                    error_no += 1
+                    print("Exception on line: {}".format(total))
+                    traceback.print_exc()
+                    
+    print("Total processed: #{}, error lines: #{}, time: {}, refined corpus is saved to {}".format(
+        total, error_no, str(datetime.timedelta(seconds=int(time.time())-start)), refined_path))
+    return total, error_no

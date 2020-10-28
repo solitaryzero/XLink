@@ -30,7 +30,7 @@ def extract_mention_and_plain_text_from_annotated_doc(document):
     for seg_index in range(1, len(split_segs)):
         seg = split_segs[seg_index]
         seg_segs = seg.split("]]")
-        instance_id, mention = seg_segs[0].split("|")
+        instance_id, mention = seg_segs[0].split("|", 1)
 
         mention_anchor_list.append([mention, instance_id, len(plain_text)])
         plain_text += mention
@@ -170,7 +170,7 @@ def expand_mention_anchors(source, mention_anchors):
 
 def filter_mention_anchors(mention_anchors, link_m, freq_m, link_prob_th) -> dict:
     """
-    1. filter out len(m) < 1
+    1. filter out len(m) <= 1
     2. expand mention_anchors from entity dictionary
     3. filter out link(m) < 2
     4. filter out link_prob(m) < 0.0001
@@ -183,8 +183,11 @@ def filter_mention_anchors(mention_anchors, link_m, freq_m, link_prob_th) -> dic
             ma[m] = mention_anchors[m]
     nma = dict()
     for m in ma:
-        if m == '__all__': continue
-        if link_m.get(m) is None or freq_m.get(m) is None or link_m[m] < 2: continue
-        if (float)(link_m[m]/freq_m[m]) < link_prob_th: continue
+        if m == '__all__': 
+            continue
+        if link_m.get(m) is None or freq_m.get(m) is None or link_m[m] < 2: 
+            continue
+        if (float(link_m[m])/float(freq_m[m])) < link_prob_th: 
+            continue
         nma[m] = ma[m]
     return nma

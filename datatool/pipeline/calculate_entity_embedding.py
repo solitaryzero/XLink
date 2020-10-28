@@ -109,3 +109,10 @@ def calculate_embedding_with_abstract(corpus_path, vector_path, out_path):
 
     print("Embedding generated, time: {}, saved to file:\n\t{}".format(
         str(datetime.timedelta(seconds=int(time.time()) - start_time)), out_path))
+
+
+if __name__ == "__main__":
+    data_path = '/data/zfw/xlink/bd'
+    calculate_embedding_with_abstract(corpus_path='%s/standard_abstract.txt' %data_path,
+                                    vector_path='%s/emb/result300/vectors_word' %data_path,
+                                    out_path='%s/emb/result300/vectors_abstract' %data_path)
