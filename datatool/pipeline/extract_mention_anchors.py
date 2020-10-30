@@ -51,6 +51,7 @@ def extract_mention_and_out_links_from_corpus(corpus_path):
     """
     mention_anchors = dict()
     out_links = dict()
+    self_links = dict()
 
     counter, mode_cnt = 0, 1000000
     start_time = int(time.time())
@@ -80,6 +81,11 @@ def extract_mention_and_out_links_from_corpus(corpus_path):
                         mention_anchors[mention][anchor] = 0
                     mention_anchors[mention][anchor] += 1
                     out_links[instance_id].add(anchor)
+
+                    # 2020.10.28
+                    if (instance_id == anchor):
+                        self_links[mention] = self_links.get(mention, 0)+1
+
             except Exception as e:
                 print(counter, e)
     ol = dict()
@@ -88,7 +94,7 @@ def extract_mention_and_out_links_from_corpus(corpus_path):
             ol[i] = list(out_links[i])
     print("Extracted, total mentions: #{}, total time: {}".format(
         len(mention_anchors), str(datetime.timedelta(seconds=int(time.time())-start_time))))
-    return mention_anchors, ol
+    return mention_anchors, ol, self_links
 
 def merge_mention_anchors(mention_anchors_list):
     """
@@ -137,6 +143,26 @@ def merge_out_links(out_links_list):
         len(ol), str(datetime.timedelta(seconds=int(time.time()) - start_at))))
     return ol
 
+
+def merge_self_links(self_links_list):
+    """
+        把多源的 self_links 合并起来，例如合并分别从 abstract, article, infobox 中抽取的 self_links
+
+    :param self_links_list:
+    :return:
+    """
+    print("\nMerging self links from {} sources".format(len(self_links_list)))
+    start_at = int(time.time())
+    sl = dict()
+    for self_links in self_links_list:
+        for inst in self_links:
+            sl[inst] = sl.get(inst, 0) + self_links[inst]
+
+    print("Merged, self_links: #{}, time: {}".format(
+        len(sl), str(datetime.timedelta(seconds=int(time.time()) - start_at))))
+    return sl
+
+
 def expand_mention_anchors(source, mention_anchors):
     """
     从 mention_anchor.json 扩充词典
@@ -168,7 +194,7 @@ def expand_mention_anchors(source, mention_anchors):
     return title_entities
 
 
-def filter_mention_anchors(mention_anchors, link_m, freq_m, link_prob_th) -> dict:
+def filter_mention_anchors(mention_anchors, link_m, freq_m, self_links, link_prob_th) -> dict:
     """
     1. filter out len(m) <= 1
     2. expand mention_anchors from entity dictionary
@@ -185,7 +211,7 @@ def filter_mention_anchors(mention_anchors, link_m, freq_m, link_prob_th) -> dic
     for m in ma:
         if m == '__all__': 
             continue
-        if link_m.get(m) is None or freq_m.get(m) is None or link_m[m] < 2: 
+        if link_m.get(m) is None or freq_m.get(m) is None or (link_m[m] - self_links.get(m, 0) < 2): 
             continue
         if (float(link_m[m])/float(freq_m[m])) < link_prob_th: 
             continue

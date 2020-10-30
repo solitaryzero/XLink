@@ -48,16 +48,23 @@ def generate_mention_anchors_and_out_links(data_path: str, corpus_name: str) -> 
     import time, datetime
     from datatool.pipeline import extract_mention_anchors
     standard_corpus_path = os.path.join(data_path, "standard_{}.txt".format(corpus_name))
-    mention_anchors, out_links = extract_mention_anchors.extract_mention_and_out_links_from_corpus(standard_corpus_path)
+    # mention_anchors, out_links = extract_mention_anchors.extract_mention_and_out_links_from_corpus(standard_corpus_path)
+    mention_anchors, out_links, self_links = extract_mention_anchors.extract_mention_and_out_links_from_corpus(standard_corpus_path)
 
     mention_anchors_json_path   = os.path.join(data_path, "mention_anchors_{}.json".format(corpus_name))
     out_links_json_path         = os.path.join(data_path, "out_links_{}.json".format(corpus_name))
+
+    # 2020.10.28
+    self_links_json_path        = os.path.join(data_path, "self_links_{}.json".format(corpus_name))
 
     start_at = int(time.time())
     print("Saving mention_anchors and out_links to file:\n\t{}\n\t{}".format(
         mention_anchors_json_path, out_links_json_path))
     json.dump(mention_anchors, open(mention_anchors_json_path, "w", encoding="utf-8"))
     json.dump(out_links, open(out_links_json_path, "w", encoding="utf-8"))
+
+    json.dump(self_links, open(self_links_json_path, "w", encoding="utf-8"))
+
     print("Json files saved. time: {}".format(
         str(datetime.timedelta(seconds=int(time.time()) - start_at))
     ))
@@ -72,23 +79,34 @@ def merge_multiple_mention_anchors(data_path: str, corpus_list: list, is_save=Fa
     print("Merging mention_anchors from: {}".format(",".join(corpus_list)))
     mention_anchors_list = list()
     out_links_list = list()
+    self_links_list = list()
+
     for corpus in corpus_list:
         mention_anchors_json_path = os.path.join(data_path, "mention_anchors_{}.json".format(corpus))
         out_links_json_path = os.path.join(data_path,  "out_links_{}.json".format(corpus))
+        self_links_json_path = os.path.join(data_path, "self_links_{}.json".format(corpus))
+
         mention_anchors_list.append(json.load(open(mention_anchors_json_path, "r", encoding="utf-8")))
         out_links_list.append(json.load(open(out_links_json_path, "r", encoding="utf-8")))
+        self_links_list.append(json.load(open(self_links_json_path, "r", encoding="utf-8")))
+
     mention_anchors = extract_mention_anchors.merge_mention_anchors(mention_anchors_list)
     out_links = extract_mention_anchors.merge_out_links(out_links_list)
+    self_links = extract_mention_anchors.merge_self_links(self_links_list)
 
     if is_save:
         mention_anchors_json_path = os.path.join(data_path, "mention_anchors.json")
         json.dump(mention_anchors, open(mention_anchors_json_path, "w", encoding="utf-8"))
         out_links_json_path = os.path.join(data_path, "out_links.json")
         json.dump(out_links, open(out_links_json_path, "w", encoding="utf-8"))
-        print("Finished, time: {}. merged files have been saved to: \n\t{}\n\t{}".format(
+        self_links_json_path = os.path.join(data_path, "self_links.json")
+        json.dump(out_links, open(self_links_json_path, "w", encoding="utf-8"))
+
+        print("Finished, time: {}. merged files have been saved to: \n\t{}\n\t{}\n\t{}".format(
             str(datetime.timedelta(seconds=int(time.time()) - start_at)),
             mention_anchors_json_path,
-            out_links_json_path
+            out_links_json_path,
+            self_links_json_path
         ))
     statistics_about_mention_anchors_and_out_links(mention_anchors, out_links)
     return mention_anchors, out_links
@@ -148,11 +166,16 @@ def merge_freq_m(data_path, corpus_list, is_save=False) -> dict:
         json.dump(freq_m, open(os.path.join(data_path, "freq_m.json"), "w"))
     return freq_m
 
-def refine_mention_anchors_by_freq_m(data_path, freq_m, mention_anchors=None, is_save=False) -> dict:
+def refine_mention_anchors_by_freq_m(data_path, freq_m=None, mention_anchors=None, is_save=False) -> dict:
     import os, json
     ma = dict()
     if mention_anchors is None:
         mention_anchors = json.load(open(os.path.join(data_path, "mention_anchors.json"), "r", encoding="utf-8"))
+
+    if freq_m is None:
+        freq_m_path = os.path.join(data_path, "freq_m.json")
+        freq_m      = json.load(open(freq_m_path, "r", encoding="utf-8"))
+
     for m in mention_anchors:
         if m in freq_m:
             ma[m] = mention_anchors[m]
@@ -186,8 +209,12 @@ def filter_mention_anchors_by_len_and_prob(
         print("\nLoading freq(m) from file: {}".format(freq_m_path))
         freq_m      = json.load(open(freq_m_path, "r", encoding="utf-8"))
 
+    self_links_path = os.path.join(data_path, "self_links.json")
+    print("\nLoading self links from file: {}".format(self_links_path))
+    self_links      = json.load(open(self_links_path, "r", encoding="utf-8"))
+
     print("\nFiltering mention anchors, link_prob threshold: {}".format(link_prob_th))
-    ma = extract_mention_anchors.filter_mention_anchors(mention_anchors, link_m, freq_m, link_prob_th)
+    ma = extract_mention_anchors.filter_mention_anchors(mention_anchors, link_m, freq_m, self_links, link_prob_th)
 
     print("\nFiltered, time: {}".format(str(datetime.timedelta(seconds=int(time.time())-start_at))))
     return ma
@@ -367,6 +394,7 @@ if __name__ == "__main__":
     data_path = '/data/zfw/xlink/%s/' %(source)
     corpus_list = ["abstract", "article", "infobox"]
     
+    '''
     # 第一步
     # 1.1 生成标准输入: standard_entity_id.txt   standard_corpus.txt
     # ttl_path                = data_path + "entity_id.ttl"
@@ -394,7 +422,7 @@ if __name__ == "__main__":
 
     # 3.2 从 out_links 生成 train_kg
     generate_emb_train_kg(data_path)
-
+    
     # 第四步
     # 4.1 全文统计 freq(m)
     for c in corpus_list: 
@@ -414,11 +442,11 @@ if __name__ == "__main__":
     
     # 第五步
     # 5.1 根据 freq(m) refine mention_anchors.
-    mention_anchors = refine_mention_anchors_by_freq_m(data_path, freq_m)
+    mention_anchors = refine_mention_anchors_by_freq_m(data_path)
     ma, tt = expand_mention_anchors_by_entity_dict(source, data_path, mention_anchors)
 
     # 5.2 过滤 link(m)<2 和 link_prob(m)<0.0001 的 mentions
-    mention_anchors = filter_mention_anchors_by_len_and_prob(data_path, 0.0001, ma, None, freq_m)
+    mention_anchors = filter_mention_anchors_by_len_and_prob(data_path, 0.0001, ma, None, None)
     # 5.3 从训练得到的词表 vocab_word 得到 vocab_word.trie
     generate_vocab_word_for_trie(data_path)
     
@@ -433,7 +461,7 @@ if __name__ == "__main__":
     #       - mention_anchors.txt
     #       - title_entities.txt
     generate_input_for_tries(data_path)
-    
+    '''
 
     # 7.2 & 8 生成三个概率文件
     #     - baidu_entity_prior.dat        entity::;prior
