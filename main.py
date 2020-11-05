@@ -1,6 +1,7 @@
 # from jpype import *
 import subprocess
 import os
+import argparse
 
 def generate_standard_entity_dict(source, old_entity_path, entity_ttl_path, standard_entity_path) -> None:
     from utils.entity import EntityHolder
@@ -11,7 +12,11 @@ def generate_standard_entity_dict(source, old_entity_path, entity_ttl_path, stan
 
 def generate_standard_corpus(source, data_path, corpus_name, mark_titles=False) -> None:
     import os, imp
-    raw_corpus_path = os.path.join(data_path, "bd_{}.txt".format(corpus_name))
+
+    if (source == 'bd'):
+        raw_corpus_path = os.path.join(data_path, "bd_{}.txt".format(corpus_name))
+    elif (source == 'wiki'):
+        raw_corpus_path = os.path.join(data_path, "en_{}.txt".format(corpus_name))
     refined_corpus_path = os.path.join(data_path, "refined_{}.txt".format(corpus_name))
     standard_corpus_path = os.path.join(data_path, "standard_{}.txt".format(corpus_name))
 
@@ -389,25 +394,26 @@ def generate_tries(data_path):
 
 
 if __name__ == "__main__":
-    source, corpus_name = "bd", "abstract"
-    # data_path       = "/mnt/sdd/zxr/xlink/{}/".format(source)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--source', type=str, default='bd')
+    args = parser.parse_args()
+    source = args.source
     data_path = '/data/zfw/xlink/%s/' %(source)
     corpus_list = ["abstract", "article", "infobox"]
+
     
-    '''
     # 第一步
     # 1.1 生成标准输入: standard_entity_id.txt   standard_corpus.txt
     # ttl_path                = data_path + "entity_id.ttl"
     # standard_entity_id_path = data_path + "entity_id.txt"
     # old_entity_path         = data_path + "old_entity_id.txt"
     # generate_standard_entity_dict(source, old_entity_path, ttl_path, standard_entity_id_path)
-    # corpus_list = ["abstract", "article", "infobox"]
     for c in corpus_list:
         generate_standard_corpus(source, data_path, c, True)
+    
 
     # 第二步
     # 2.1 抽取 mention_anchors 和 out_links
-    # _m, _o = generate_mention_anchors_and_out_links(data_path, corpus_name)
     for c in corpus_list:
         _m, _o = generate_mention_anchors_and_out_links(data_path, c)
     _, __ = merge_multiple_mention_anchors(data_path, corpus_list, is_save=True)
@@ -461,7 +467,6 @@ if __name__ == "__main__":
     #       - mention_anchors.txt
     #       - title_entities.txt
     generate_input_for_tries(data_path)
-    '''
 
     # 7.2 & 8 生成三个概率文件
     #     - baidu_entity_prior.dat        entity::;prior

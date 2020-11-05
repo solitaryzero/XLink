@@ -24,13 +24,15 @@ def extract_mention_and_plain_text_from_annotated_doc(document):
     for seg_index in range(1, len(split_segs)):
         seg = split_segs[seg_index]
         seg_segs = seg.split("]]")
-        
         instance_id, mention = seg_segs[0].split("|", 1)
+
+        # 2020.11.2 bad cases like 香港商[索尼
+        instance_id.strip('[')
 
         mention_anchor_list.append([mention, instance_id, len(plain_text)])
         plain_text += mention
 
         if len(seg_segs) > 1:
             plain_text += seg_segs[1]
-    return mention_anchor_list, plain_text
 
+    return mention_anchor_list, plain_text

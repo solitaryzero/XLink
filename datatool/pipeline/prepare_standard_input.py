@@ -179,7 +179,9 @@ def corpus_refine(source, corpus_path, refined_path):
                         ))
                         last_update = curr_update
 
-                    if not is_corpus_line_valid(source, line): continue
+                    if not is_corpus_line_valid(source, line): 
+                        error_no += 1
+                        continue
 
                     line_arr  = line.strip().split("\t\t")
 
@@ -353,7 +355,10 @@ def corpus_full_refine(source, corpus_path, refined_path, mark_titles):
     print("\nRefining raw corpus: {}".format(corpus_path))
 
     def add_mention(s, eid, source='bd'):
-        return '[[%s|%s]]' %(eid, s.group())
+        if (source == 'bd'):
+            return '[[%s|%s]]' %(eid, s.group())
+        elif (source == 'wiki'):
+            return '[[%s|%s]]' %(s.group(), eid)
 
     with open(corpus_path, "r", encoding='utf-8') as rf:
         with open(refined_path, 'w', encoding='utf-8') as wf:
@@ -397,7 +402,7 @@ def corpus_full_refine(source, corpus_path, refined_path, mark_titles):
                         split_segs = content.split("[[")
                         
                         if (mark_titles):
-                            marked_text = re.sub(re.escape(title), lambda s: add_mention(s, eid), split_segs[0])
+                            marked_text = re.sub(re.escape(title), lambda s: add_mention(s, eid, source), split_segs[0])
                             refined_annotated_text += marked_text
                         else:
                             refined_annotated_text += split_segs[0]
@@ -448,9 +453,23 @@ def corpus_full_refine(source, corpus_path, refined_path, mark_titles):
                             error_no += 1
                             continue
                         eid = eid.get_id()
-                        content = line_arr[2].split('::;', 1)[1].strip()
-
+                        if (len(line_arr[2].split('::;')) == 1):
+                            # print(line)
+                            error_no += 1
+                            continue
+                        
+                        processed_content = line_arr[2].replace("'''", '')
+                        content = processed_content.split('::;', 1)[1].strip()
+                        refined_annotated_text = ""
                         split_segs = content.split("[[")
+
+                        if (mark_titles):
+                            # marked_text = re.sub(re.escape(title), lambda s: add_mention(s, eid, source), split_segs[0])
+                            # refined_annotated_text += marked_text
+                            refined_annotated_text += split_segs[0]
+                        else:
+                            refined_annotated_text += split_segs[0]
+
                         for seg_index in range(1, len(split_segs)):
                             seg = split_segs[seg_index]
                             seg_segs = seg.split("]]")
@@ -460,11 +479,11 @@ def corpus_full_refine(source, corpus_path, refined_path, mark_titles):
                             is_plain, mention, instance_id = False, "", None
                             if len(split_annotation) == 1:
                                 mention = annotated_item
-                                instance_ids = entity_dict.mention2entities.get(mention)
-                                if instance_ids is None or len(instance_ids)>1: 
+                                entity = entity_dict.get_entity_by_full_title(mention)
+                                if entity is None: 
                                     is_plain = True
                                 else:
-                                    instance_id = list(instance_ids.keys())[0]
+                                    instance_id = entity.get_id()
                             else:
                                 title = split_annotation[0]
                                 mention = split_annotation[1]

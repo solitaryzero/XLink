@@ -69,14 +69,20 @@ class EntityDictionary:
             for line in rf:
                 line_arr = line.strip().split("\t\t")
                 if len(line_arr) != 4: continue
-                title, sub_title, uris, entity_id = line_arr
-                uris = uris.split("::;")
+                if (source == 'bd'):
+                    title, sub_title, uris, entity_id = line_arr
+                    uris = uris.split("::;")
+                    # uris = [(prefix+u[len(prefix):].split('/')[0]).lower() for u in uris]
+                    uris = [(prefix+u[len(prefix):].split('?')[0]).lower() for u in uris]
+                    entity = Entity(source, entity_id, title, self._language, uris, sub_title)  # type: Entity
+                elif (source == 'wiki'):
+                    title, uris, wid, entity_id = line_arr
+                    uris = uris.split("::;")
+                    entity = Entity(source, entity_id, title.lower(), self._language, uris, "")  # type: Entity
+                else:
+                    continue
 
                 counter += 1
-                # uris = [(prefix+u[len(prefix):].split('/')[0]).lower() for u in uris]
-                uris = [(prefix+u[len(prefix):].split('?')[0]).lower() for u in uris]
-                entity = Entity(source, entity_id, title, self._language, uris, sub_title)  # type: Entity
-
                 self.entity_dict[entity_id] = entity
 
                 for uri in uris:
@@ -96,6 +102,8 @@ class EntityDictionary:
         return self.entity_dict.get(entity_id)
 
     def get_entity_by_full_title(self, full_title) -> object:
+        if (self._source == 'wiki'):
+            full_title = full_title.lower()
         return self.title2entity.get(full_title)
 
     def get_entity_by_uri(self, uri) -> object:
