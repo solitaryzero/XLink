@@ -341,10 +341,13 @@ def filter_title_entities(source, data_path):
     imp.reload(EntityManager)
 
     EManager = None # type: EntityManager.EntityManager
-    if source == 'bd': EManager = EntityManager.BaiduEntityManager
-    if source == 'wiki': EManager = EntityManager.WikiEntityManager
-
-    entity_manager = EManager(data_path + "bd_instance_ID.txt", data_path + "emb/result300/vectors_entity")
+    if source == 'bd': 
+        EManager = EntityManager.BaiduEntityManager
+        entity_manager = EManager(data_path + "bd_instance_ID.txt", data_path + "emb/result300/vectors_entity")
+    if source == 'wiki': 
+        EManager = EntityManager.WikiEntityManager
+        entity_manager = EManager(data_path + "en_instance_ID.txt", data_path + "emb/result300/vectors_entity")
+    
     title_entities = json.load(open(os.path.join(data_path, "title_entities.json"), "r", encoding="utf-8"))
     refined_tt = dict()
     for title in title_entities:
@@ -354,7 +357,7 @@ def filter_title_entities(source, data_path):
     return refined_tt
 
 
-def train_embeddings(data_path, corpus_list, merge=True, train=True, move=True):
+def train_embeddings(data_path, corpus_list, source, merge=True, train=True, move=True):
     from datatool.pipeline import calculate_entity_embedding
 
     train_text_paths = [os.path.join(data_path, "emb/train_text_{}.txt".format(corpus_name)) for corpus_name in corpus_list]
@@ -362,7 +365,7 @@ def train_embeddings(data_path, corpus_list, merge=True, train=True, move=True):
     if (merge):
         print('Executing: ' + merge_command)
         subprocess.call(merge_command, shell=True)
-    train_command = ['bash', './TrainJointModel/src/xlink-align.sh']
+    train_command = ['bash', './TrainJointModel/src/xlink-align.sh', source]
     if (train):
         print('Executing: ' + ' '.join(train_command))
         subprocess.call(train_command)
@@ -401,7 +404,6 @@ if __name__ == "__main__":
     data_path = '/data/zfw/xlink/%s/' %(source)
     corpus_list = ["abstract", "article", "infobox"]
 
-    
     # 第一步
     # 1.1 生成标准输入: standard_entity_id.txt   standard_corpus.txt
     # ttl_path                = data_path + "entity_id.ttl"
@@ -432,30 +434,24 @@ if __name__ == "__main__":
     # 第四步
     # 4.1 全文统计 freq(m)
     for c in corpus_list: 
-        # JDClass = init_JVM()
-        # _fm = calculate_freq_m(data_path, c, JDClass) # 中文 13h, 英文 58h
         _fm = calculate_freq_m(data_path, c)
-
-    # known bug: JVM cannot be restarted after shutdown
-    # shutdownJVM()
     
     freq_m = merge_freq_m(data_path, corpus_list, is_save=True)
-    
+
     # 4.2
     # TrainJointModel 训练 Embedding.
-    train_embeddings(data_path, corpus_list, merge=True, train=True)
-    # train_embeddings(data_path, corpus_list, merge=False, train=False)
+    train_embeddings(data_path, corpus_list, source, merge=True, train=True)
+    # train_embeddings(data_path, corpus_list, source, merge=False, train=False)
     
     # 第五步
     # 5.1 根据 freq(m) refine mention_anchors.
     mention_anchors = refine_mention_anchors_by_freq_m(data_path)
     ma, tt = expand_mention_anchors_by_entity_dict(source, data_path, mention_anchors)
-
+    
     # 5.2 过滤 link(m)<2 和 link_prob(m)<0.0001 的 mentions
     mention_anchors = filter_mention_anchors_by_len_and_prob(data_path, 0.0001, ma, None, None)
     # 5.3 从训练得到的词表 vocab_word 得到 vocab_word.trie
     generate_vocab_word_for_trie(data_path)
-    
 
     # 第六步
     # 6.1 重新 expand mention anchors 得到没有统计值的 title_entities

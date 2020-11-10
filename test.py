@@ -16,7 +16,8 @@
 
 import re
 
-pattern = re.compile(r'item/%E2.+?%9D/')
+# 存在以下问题：https://baike.baidu.com/item/“总统”/412 和 https://baike.baidu.com/item/总统/412 是同一个页面
+pattern = re.compile(r'item/%[Ee]2%80%9[Cc](.+?)%[Ee]2%80%9[Dd]/')
 
 with open('/data/zfw/xlink/bd/bd_instance_ID.txt', 'r', encoding='utf-8') as fin:
     for line in fin:

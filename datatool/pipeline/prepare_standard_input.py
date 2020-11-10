@@ -136,101 +136,101 @@ def infobox_pre_refine(source, corpus_path, new_corpus_path):
         str(datetime.timedelta(seconds=int(time.time()) - start_at)), new_corpus_path))
 
 
-def corpus_refine(source, corpus_path, refined_path):
-    """
-    得到 corpus_path 中所有的有效数据, 并将其保存到 refined_path 中
+# def corpus_refine(source, corpus_path, refined_path):
+#     """
+#     得到 corpus_path 中所有的有效数据, 并将其保存到 refined_path 中
 
-    有效数据是指:
-        1. 有 abstract/article
-        2. abstract/article 的标注合法 (对于中文数据的处理要先把所有的空格去掉)
-        3. 有对应的合法 instance id
+#     有效数据是指:
+#         1. 有 abstract/article
+#         2. abstract/article 的标注合法 (对于中文数据的处理要先把所有的空格去掉)
+#         3. 有对应的合法 instance id
 
-    :param source: bd|wiki
-    :param corpus_path: "./data/bd/raw_abstract.txt"
-    :param refined_path: "./data/bd/refined_abstract.txt"
-    :return: total, error_no
-    """
-    total = 0
-    error_no = 0
-    entity_dict = EntityDictionary.get_instance(source)
+#     :param source: bd|wiki
+#     :param corpus_path: "./data/bd/raw_abstract.txt"
+#     :param refined_path: "./data/bd/refined_abstract.txt"
+#     :return: total, error_no
+#     """
+#     total = 0
+#     error_no = 0
+#     entity_dict = EntityDictionary.get_instance(source)
 
-    start = int(time.time())
-    last_update = start
-    prefix = 'https://baike.baidu.com/item/'
-    print("\nRefining raw corpus: {}".format(corpus_path))
-    with open(corpus_path, "r", encoding='utf-8') as rf:
-        with open(refined_path, 'w', encoding='utf-8') as wf:
-            for line in rf:
+#     start = int(time.time())
+#     last_update = start
+#     prefix = 'https://baike.baidu.com/item/'
+#     print("\nRefining raw corpus: {}".format(corpus_path))
+#     with open(corpus_path, "r", encoding='utf-8') as rf:
+#         with open(refined_path, 'w', encoding='utf-8') as wf:
+#             for line in rf:
 
-                '''
-                if source == 'bd':
-                    line = ''.join(line.split(" "))
-                '''
+#                 '''
+#                 if source == 'bd':
+#                     line = ''.join(line.split(" "))
+#                 '''
                 
-                total += 1
-                curr_update = int(time.time())
-                # noinspection PyBroadException
-                try:
-                    if total % 1000000 == 0:
-                        print("\t#{}, batch_time: {}, total_time: {}".format(
-                            total,
-                            str(datetime.timedelta(seconds=curr_update-last_update)),
-                            str(datetime.timedelta(seconds=curr_update-start))
-                        ))
-                        last_update = curr_update
+#                 total += 1
+#                 curr_update = int(time.time())
+#                 # noinspection PyBroadException
+#                 try:
+#                     if total % 1000000 == 0:
+#                         print("\t#{}, batch_time: {}, total_time: {}".format(
+#                             total,
+#                             str(datetime.timedelta(seconds=curr_update-last_update)),
+#                             str(datetime.timedelta(seconds=curr_update-start))
+#                         ))
+#                         last_update = curr_update
 
-                    if not is_corpus_line_valid(source, line): 
-                        error_no += 1
-                        continue
+#                     if not is_corpus_line_valid(source, line): 
+#                         error_no += 1
+#                         continue
 
-                    line_arr  = line.strip().split("\t\t")
+#                     line_arr  = line.strip().split("\t\t")
 
-                    if source == 'bd':
-                        title = line_arr[0].strip()
-                        sub_title = line_arr[1].strip()
+#                     if source == 'bd':
+#                         title = line_arr[0].strip()
+#                         sub_title = line_arr[1].strip()
 
-                        full_title = title
-                        if len(sub_title) > 1: full_title += sub_title
+#                         full_title = title
+#                         if len(sub_title) > 1: full_title += sub_title
 
-                        # url = line_arr[2][23:]
-                        # strip fromtitle
-                        # url = prefix+line_arr[2][len(prefix):].split('/')[0]
-                        url = prefix+line_arr[2][len(prefix):].split('?')[0]
+#                         # url = line_arr[2][23:]
+#                         # strip fromtitle
+#                         # url = prefix+line_arr[2][len(prefix):].split('/')[0]
+#                         url = prefix+line_arr[2][len(prefix):].split('?')[0]
 
-                        # if entity_dict.get_entity_by_uri(url) is not None \
-                        #         and line_arr[3].split('::;', 1)[1].strip() != "":
-                        #     wf.write("{}\t\t{}\n".format(
-                        #         entity_dict.get_entity_by_uri(url).get_id(),
-                        #         line_arr[3].split('::;', 1)[1]))
-                        # elif entity_dict.get_entity_by_full_title(full_title) is not None \
-                        #         and line_arr[3].split('::;', 1)[1].strip() != "":
-                        #     wf.write("{}\t\t{}\n".format(
-                        #         entity_dict.get_entity_by_full_title(full_title).get_id(),
-                        #         line_arr[3].split('::;', 1)[1]))
+#                         # if entity_dict.get_entity_by_uri(url) is not None \
+#                         #         and line_arr[3].split('::;', 1)[1].strip() != "":
+#                         #     wf.write("{}\t\t{}\n".format(
+#                         #         entity_dict.get_entity_by_uri(url).get_id(),
+#                         #         line_arr[3].split('::;', 1)[1]))
+#                         # elif entity_dict.get_entity_by_full_title(full_title) is not None \
+#                         #         and line_arr[3].split('::;', 1)[1].strip() != "":
+#                         #     wf.write("{}\t\t{}\n".format(
+#                         #         entity_dict.get_entity_by_full_title(full_title).get_id(),
+#                         #         line_arr[3].split('::;', 1)[1]))
 
-                        eid = entity_dict.get_entity_by_uri(url)
-                        if (eid is None):
-                            eid = entity_dict.get_entity_by_full_title(full_title)
+#                         eid = entity_dict.get_entity_by_uri(url)
+#                         if (eid is None):
+#                             eid = entity_dict.get_entity_by_full_title(full_title)
 
-                        content = line_arr[3].split('::;', 1)[1].strip()
-                        if not(eid is None) and (content != ""):
-                            wf.write("%s\t\t%s\n" %(eid, content))
+#                         content = line_arr[3].split('::;', 1)[1].strip()
+#                         if not(eid is None) and (content != ""):
+#                             wf.write("%s\t\t%s\n" %(eid, content))
                             
 
-                    if source == 'wiki':
-                        full_title = line_arr[0].strip()
-                        if entity_dict.get_entity_by_full_title(full_title) is not None\
-                                and line_arr[2].split('::;', 1)[1].strip() != "":
-                            wf.write("{}\t\t{}\n".format(
-                                entity_dict.get_entity_by_full_title(full_title).get_id(),
-                                line_arr[2].split('::;', 1)[1]))
-                except Exception:
-                    error_no += 1
-                    # print("Exception on line: {}".format(total))
-                    # traceback.print_exc()
-    print("Total processed: #{}, error lines: #{}, time: {}, refined corpus is saved to {}".format(
-        total, error_no, str(datetime.timedelta(seconds=int(time.time())-start)), refined_path))
-    return total, error_no
+#                     if source == 'wiki':
+#                         full_title = line_arr[0].strip()
+#                         if entity_dict.get_entity_by_full_title(full_title) is not None\
+#                                 and line_arr[2].split('::;', 1)[1].strip() != "":
+#                             wf.write("{}\t\t{}\n".format(
+#                                 entity_dict.get_entity_by_full_title(full_title).get_id(),
+#                                 line_arr[2].split('::;', 1)[1]))
+#                 except Exception:
+#                     error_no += 1
+#                     # print("Exception on line: {}".format(total))
+#                     # traceback.print_exc()
+#     print("Total processed: #{}, error lines: #{}, time: {}, refined corpus is saved to {}".format(
+#         total, error_no, str(datetime.timedelta(seconds=int(time.time())-start)), refined_path))
+#     return total, error_no
 
 
 """
@@ -241,93 +241,93 @@ Main Function:
 Tool Functions:
     refine_annotation_by_split(source, annotated_text)
 """
-def refine_annotation_by_split(source, annotated_text):
-    # id_holder = Entity.get_instance(source)
-    entity_dict = EntityDictionary.get_instance(source)  # type: EntityDictionary
+# def refine_annotation_by_split(source, annotated_text):
+#     # id_holder = Entity.get_instance(source)
+#     entity_dict = EntityDictionary.get_instance(source)  # type: EntityDictionary
 
-    # "a[[a|b]]s[[d]]v"
-    plain_text, refined_annotated_text, mention_list = "", "", list()
-    split_segs = annotated_text.split("[[")
-    if len(split_segs) < 2: return annotated_text, annotated_text, mention_list
+#     # "a[[a|b]]s[[d]]v"
+#     plain_text, refined_annotated_text, mention_list = "", "", list()
+#     split_segs = annotated_text.split("[[")
+#     if len(split_segs) < 2: return annotated_text, annotated_text, mention_list
 
-    plain_text += split_segs[0]
-    refined_annotated_text += split_segs[0]
+#     plain_text += split_segs[0]
+#     refined_annotated_text += split_segs[0]
 
-    prefix = 'https://baike.baidu.com/item/'
+#     prefix = 'https://baike.baidu.com/item/'
 
-    # "a" "a|b]]s" "d]]v"
-    for seg_index in range(1, len(split_segs)):
-        seg = split_segs[seg_index]
-        seg_segs = seg.split("]]")
-        annotated_item = seg_segs[0]
-        split_annotation = annotated_item.split("|")
+#     # "a" "a|b]]s" "d]]v"
+#     for seg_index in range(1, len(split_segs)):
+#         seg = split_segs[seg_index]
+#         seg_segs = seg.split("]]")
+#         annotated_item = seg_segs[0]
+#         split_annotation = annotated_item.split("|")
 
-        is_plain, mention, instance_id = False, "", None
-        if len(split_annotation) == 1:
-            mention = annotated_item
-            if source == 'bd':
-                is_plain = True
-            else:
-                instance_ids = entity_dict.mention2entities.get(mention)
-                if instance_ids is None or len(instance_ids)>1: is_plain = True
-                else: instance_id = list(instance_ids.keys())[0]
-        else:
-            if source == 'wiki':
-                title = split_annotation[0]
-                mention = split_annotation[1]
+#         is_plain, mention, instance_id = False, "", None
+#         if len(split_annotation) == 1:
+#             mention = annotated_item
+#             if source == 'bd':
+#                 is_plain = True
+#             else:
+#                 instance_ids = entity_dict.mention2entities.get(mention)
+#                 if instance_ids is None or len(instance_ids)>1: is_plain = True
+#                 else: instance_id = list(instance_ids.keys())[0]
+#         else:
+#             if source == 'wiki':
+#                 title = split_annotation[0]
+#                 mention = split_annotation[1]
 
-                entity = entity_dict.get_entity_by_full_title(title)
-                if entity is None: is_plain = True
-                else: instance_id = entity.get_id()
-            else:
-                mention = split_annotation[0]
-                # url = urllib.parse.unquote(split_annotation[1]).split("?")[0]
-                # strip fromtitle
-                # url = prefix+split_annotation[1][len(prefix):].split('/')[0]
-                url = prefix+split_annotation[1][len(prefix):].split('?')[0]
+#                 entity = entity_dict.get_entity_by_full_title(title)
+#                 if entity is None: is_plain = True
+#                 else: instance_id = entity.get_id()
+#             else:
+#                 mention = split_annotation[0]
+#                 # url = urllib.parse.unquote(split_annotation[1]).split("?")[0]
+#                 # strip fromtitle
+#                 # url = prefix+split_annotation[1][len(prefix):].split('/')[0]
+#                 url = prefix+split_annotation[1][len(prefix):].split('?')[0]
 
-                entity = entity_dict.get_entity_by_uri(url) # type: utils.dictionary.Entity
-                if entity is None: is_plain = True
-                else: instance_id = entity.get_id()
+#                 entity = entity_dict.get_entity_by_uri(url) # type: utils.dictionary.Entity
+#                 if entity is None: is_plain = True
+#                 else: instance_id = entity.get_id()
 
-        if is_plain:
-            refined_annotated_text += mention
-        else:
-            refined_annotated_text += "[[{}|{}]]".format(instance_id, mention)
-            mention_list.append([mention, instance_id, len(plain_text)])
-        plain_text += mention
-        if len(seg_segs) > 1:
-            plain_text += seg_segs[1]
-            refined_annotated_text += seg_segs[1]
+#         if is_plain:
+#             refined_annotated_text += mention
+#         else:
+#             refined_annotated_text += "[[{}|{}]]".format(instance_id, mention)
+#             mention_list.append([mention, instance_id, len(plain_text)])
+#         plain_text += mention
+#         if len(seg_segs) > 1:
+#             plain_text += seg_segs[1]
+#             refined_annotated_text += seg_segs[1]
 
-    return plain_text, refined_annotated_text, mention_list
+#     return plain_text, refined_annotated_text, mention_list
 
-def corpus_annotation_refine(source, refined_path, annotation_refined_path):
-    start_at = int(time.time())
-    print("\nRefining annotations in pre-refined corpus:\n\t{}".format(refined_path))
-    with open(refined_path, 'r', encoding='utf-8') as rf:
-        with open(annotation_refined_path, 'w', encoding='utf-8') as wf:
-            line_no = 0
-            start = int(time.time())
-            last_time = start
-            for line in rf:
-                # noinspection PyBroadException
-                try:
-                    line_no += 1
-                    if line_no % 100000 == 0:
-                        curr_time = int(time.time())
-                        print("\t#{}, batch_time: {}, total_time: {}".format(
-                            line_no,
-                            str(datetime.timedelta(seconds=curr_time-last_time)),
-                            str(datetime.timedelta(seconds=curr_time-start))))
-                        last_time = curr_time
-                    instance_id, annotated_text = line.strip().split("\t\t")
-                    plain_text, refined_annotated_text, mention_list = refine_annotation_by_split(source, annotated_text)
-                    wf.write(instance_id + "\t\t" + refined_annotated_text.strip() + "\n")
-                except Exception:
-                    print("Unexpected line: %d" % line_no)
-    print("Total processed: {}, time consume: {}, refined file is saved to:\n\t{}".format(
-        line_no, str(datetime.timedelta(seconds=int(time.time())-start_at)), annotation_refined_path))
+# def corpus_annotation_refine(source, refined_path, annotation_refined_path):
+#     start_at = int(time.time())
+#     print("\nRefining annotations in pre-refined corpus:\n\t{}".format(refined_path))
+#     with open(refined_path, 'r', encoding='utf-8') as rf:
+#         with open(annotation_refined_path, 'w', encoding='utf-8') as wf:
+#             line_no = 0
+#             start = int(time.time())
+#             last_time = start
+#             for line in rf:
+#                 # noinspection PyBroadException
+#                 try:
+#                     line_no += 1
+#                     if line_no % 100000 == 0:
+#                         curr_time = int(time.time())
+#                         print("\t#{}, batch_time: {}, total_time: {}".format(
+#                             line_no,
+#                             str(datetime.timedelta(seconds=curr_time-last_time)),
+#                             str(datetime.timedelta(seconds=curr_time-start))))
+#                         last_time = curr_time
+#                     instance_id, annotated_text = line.strip().split("\t\t")
+#                     plain_text, refined_annotated_text, mention_list = refine_annotation_by_split(source, annotated_text)
+#                     wf.write(instance_id + "\t\t" + refined_annotated_text.strip() + "\n")
+#                 except Exception:
+#                     print("Unexpected line: %d" % line_no)
+#     print("Total processed: {}, time consume: {}, refined file is saved to:\n\t{}".format(
+#         line_no, str(datetime.timedelta(seconds=int(time.time())-start_at)), annotation_refined_path))
 
 
 def corpus_full_refine(source, corpus_path, refined_path, mark_titles):
@@ -390,6 +390,8 @@ def corpus_full_refine(source, corpus_path, refined_path, mark_titles):
 
                         # strip fromtitle
                         url = prefix+line_arr[2][len(prefix):].split('?')[0]
+                        # remove quotes
+                        url = entity_dict.strip_quotation_marks(url)
 
                         eid = entity_dict.get_entity_by_uri_and_title(url, full_title)
                         if (eid is None):

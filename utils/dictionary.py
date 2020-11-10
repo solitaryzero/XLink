@@ -19,6 +19,8 @@ class EntityDictionary:
     uri2entity       = dict()  # type: Dict[str, Entity]
 
     mention2entities = dict()  # type: Dict[str, Dict[str, Entity]]
+    
+    pattern = r'item/%[Ee]2%80%9[Cc](.+?)%[Ee]2%80%9[Dd]/'
 
     def __init__(self):
         raise SyntaxError("InstanceDictionary can be initialized by __init__, please use get_instance()")
@@ -42,6 +44,15 @@ class EntityDictionary:
                 cls._wiki_instance = object.__new__(EntityDictionary)
                 cls._wiki_instance.init(source, entity_dict_path)
             return cls._wiki_instance
+
+    def strip_quotation_marks(self, url):
+        if (self._source != 'bd'):
+            return url
+
+        def _dummy(m):
+            return 'item/' + m.group(1) + '/'
+
+        return re.sub(self.pattern, _dummy, url)
 
     def init(self, source, entity_dict_path):
         """
@@ -74,6 +85,10 @@ class EntityDictionary:
                     uris = uris.split("::;")
                     # uris = [(prefix+u[len(prefix):].split('/')[0]).lower() for u in uris]
                     uris = [(prefix+u[len(prefix):].split('?')[0]).lower() for u in uris]
+
+                    # 2020.11.5 remove quotes
+                    uris = [self.strip_quotation_marks(u) for u in uris]
+
                     entity = Entity(source, entity_id, title, self._language, uris, sub_title)  # type: Entity
                 elif (source == 'wiki'):
                     title, uris, wid, entity_id = line_arr

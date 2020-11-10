@@ -11,7 +11,8 @@ set -ex
 # iter 迭代次数
 # window 上下文的词个数
 
-source="bd"
+# source="bd"
+source=$1
 path="/data/zfw/xlink/"$source"/emb/"
 train_text=$path"train_text"
 train_kg=$path"train_kg"
