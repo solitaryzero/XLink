@@ -46,7 +46,7 @@ def read_binary_vectors(vector_path, debug=False):
     return vector_map, num_words, num_dim
 
 
-def calculate_embedding_with_abstract(corpus_path, vector_path, out_path):
+def calculate_embedding_with_abstract(corpus_path, title_path, vector_path, out_path):
     """
     :param corpus_path: <instance_id>\t\t<document>
     :param vector_path: path to word embeddings
@@ -65,6 +65,14 @@ def calculate_embedding_with_abstract(corpus_path, vector_path, out_path):
     entity_vectors = {}
     entity_vec_writer = open(out_path, "wb")
 
+    title_map = {}
+    with open(title_path, 'r', encoding='utf-8') as fin:
+        for line in fin:
+            segs = line.strip().split('\t\t')
+            eid = segs[3]
+            title = segs[0] + segs[1]
+            title_map[eid] = title
+
     with open(corpus_path, "r", encoding="utf-8") as rf:
         for line in rf:
             counter += 1
@@ -78,6 +86,9 @@ def calculate_embedding_with_abstract(corpus_path, vector_path, out_path):
                 last_update = curr_update
             try:
                 instance_id, document = line.strip().split("\t\t")
+
+                # 2020.11.19 retain only first paragraph and use title
+                document = title_map.get(instance_id, '') + document.split('::;')[0]
 
                 # 2020.8.20 strip spaces between chinese words
                 document = re.sub(r'([^a-zA-Z])( )([^a-zA-Z])', r'\1\3', document)
@@ -114,5 +125,6 @@ def calculate_embedding_with_abstract(corpus_path, vector_path, out_path):
 if __name__ == "__main__":
     data_path = '/data/zfw/xlink/bd'
     calculate_embedding_with_abstract(corpus_path='%s/standard_abstract.txt' %data_path,
+                                    title_path='%s/bd_instance_ID.txt' %data_path,
                                     vector_path='%s/emb/result300/vectors_word' %data_path,
                                     out_path='%s/emb/result300/vectors_abstract' %data_path)

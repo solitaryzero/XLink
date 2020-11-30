@@ -376,7 +376,13 @@ def train_embeddings(data_path, corpus_list, source, merge=True, train=True, mov
         mv_command2 = ['cp', '%s/emb/result300/vectors_word10.dat' %data_path, '%s/emb/result300/vectors_word' %data_path]
         subprocess.call(mv_command2)
 
+    if (source == 'bd'):
+        prefix = 'bd'
+    elif (source == 'wiki'):
+        prefix = 'en'
+
     calculate_entity_embedding.calculate_embedding_with_abstract(corpus_path='%s/standard_abstract.txt' %data_path,
+                                                                 title_path='%s/%s_instance_ID.txt' %(data_path, prefix),
                                                                  vector_path='%s/emb/result300/vectors_word' %data_path,
                                                                  out_path='%s/emb/result300/vectors_abstract' %data_path)
 
@@ -437,11 +443,12 @@ if __name__ == "__main__":
         _fm = calculate_freq_m(data_path, c)
     
     freq_m = merge_freq_m(data_path, corpus_list, is_save=True)
-
+    
     # 4.2
     # TrainJointModel 训练 Embedding.
-    train_embeddings(data_path, corpus_list, source, merge=True, train=True)
-    # train_embeddings(data_path, corpus_list, source, merge=False, train=False)
+    # train_embeddings(data_path, corpus_list, source, merge=True, train=True, move=True)
+    train_embeddings(data_path, corpus_list, source, merge=False, train=False, move=False)
+    
     
     # 第五步
     # 5.1 根据 freq(m) refine mention_anchors.
@@ -472,3 +479,4 @@ if __name__ == "__main__":
 
     # 9 生成各个字典树
     generate_tries(data_path)
+    
